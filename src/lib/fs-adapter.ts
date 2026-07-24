@@ -71,7 +71,7 @@ export function createFsAdapter(root: FileSystemDirectoryHandle): PromiseFsClien
       const file = await handle.getFile()
       const buffer = new Uint8Array(await file.arrayBuffer())
       if (isObjectRead) {
-        console.debug(`[fs-diag] readFile OK "${filepath}" (${buffer.byteLength} bytes)`)
+        console.log(`[fs-diag] readFile OK "${filepath}" (${buffer.byteLength} bytes)`)
       }
       const encoding = typeof opts === 'string' ? opts : opts?.encoding
       if (encoding === 'utf8') return new TextDecoder().decode(buffer)
@@ -86,7 +86,7 @@ export function createFsAdapter(root: FileSystemDirectoryHandle): PromiseFsClien
       if (isObjectRead) {
         const name = err instanceof Error ? err.name : typeof err
         const msg = err instanceof Error ? err.message : String(err)
-        console.debug(`[fs-diag] readFile FAIL "${filepath}" -> ${name}: ${msg}`)
+        console.log(`[fs-diag] readFile FAIL "${filepath}" -> ${name}: ${msg}`)
       } else if (!isCapabilityProbe && !isExpectedMissingFile) {
         console.error(`[fs-adapter] readFile failed for "${filepath}":`, err)
       }
@@ -102,14 +102,14 @@ export function createFsAdapter(root: FileSystemDirectoryHandle): PromiseFsClien
       const names: string[] = []
       for await (const name of dir.keys()) names.push(name)
       if (isPackDir) {
-        console.debug(`[fs-diag] readdir OK "${filepath}" -> [${names.join(', ')}]`)
+        console.log(`[fs-diag] readdir OK "${filepath}" -> [${names.join(', ')}]`)
       }
       return names
     } catch (err) {
       if (isPackDir) {
         const name = err instanceof Error ? err.name : typeof err
         const msg = err instanceof Error ? err.message : String(err)
-        console.debug(`[fs-diag] readdir FAIL "${filepath}" -> ${name}: ${msg}`)
+        console.log(`[fs-diag] readdir FAIL "${filepath}" -> ${name}: ${msg}`)
       }
       throw err
     }
