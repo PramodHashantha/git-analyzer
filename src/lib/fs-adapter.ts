@@ -30,11 +30,30 @@ function splitPath(filepath: string): string[] {
   return filepath.split('/').filter(Boolean)
 }
 
+/**
+ * Runs a File System Access API operation, converting a 'NotFoundError'
+ * DOMException (thrown by getFileHandle/getDirectoryHandle when a path
+ * doesn't exist) into a Node-style Error with `.code = 'ENOENT'`, since
+ * isomorphic-git's internals check `err.code === 'ENOENT'` to distinguish
+ * benign "not found" cases from real failures. Other errors (e.g.
+ * permission errors) propagate unchanged.
+ */
+async function withEnoent<T>(fn: () => Promise<T>): Promise<T> {
+  try {
+    return await fn()
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'NotFoundError') {
+      throw Object.assign(new Error('ENOENT: no such file or directory'), { code: 'ENOENT' })
+    }
+    throw err
+  }
+}
+
 export function createFsAdapter(root: FileSystemDirectoryHandle): PromiseFsClient {
   async function resolveDir(segments: string[]): Promise<FileSystemDirectoryHandle> {
     let dir = root
     for (const segment of segments) {
-      dir = await dir.getDirectoryHandle(segment)
+      dir = await withEnoent(() => dir.getDirectoryHandle(segment))
     }
     return dir
   }
@@ -42,7 +61,7 @@ export function createFsAdapter(root: FileSystemDirectoryHandle): PromiseFsClien
   async function getFileHandle(filepath: string): Promise<FileSystemFileHandle> {
     const segments = splitPath(filepath)
     const parent = await resolveDir(segments.slice(0, -1))
-    return parent.getFileHandle(segments[segments.length - 1])
+    return withEnoent(() => parent.getFileHandle(segments[segments.length - 1]))
   }
 
   async function readFile(filepath: string, opts?: { encoding?: string } | string) {
@@ -79,7 +98,7 @@ export function createFsAdapter(root: FileSystemDirectoryHandle): PromiseFsClien
         mtimeMs: file.lastModified, ctimeMs: file.lastModified, uid: 1, gid: 1, dev: 1,
       })
     } catch {
-      await parent.getDirectoryHandle(name)
+      await withEnoent(() => parent.getDirectoryHandle(name))
       return makeStat({
         type: 'dir', mode: 0o040000, size: 0, ino: 0, mtimeMs: 0, ctimeMs: 0, uid: 1, gid: 1, dev: 1,
       })

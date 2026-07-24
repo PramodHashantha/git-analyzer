@@ -35,4 +35,18 @@ describe('createFsAdapter', () => {
       ReadOnlyFileSystemError
     )
   })
+
+  it('normalizes NotFoundError to Node-style ENOENT on readFile', async () => {
+    const fs = createFsAdapter(root)
+    await expect(fs.promises.readFile('/does-not-exist.txt')).rejects.toMatchObject({
+      code: 'ENOENT',
+    })
+  })
+
+  it('normalizes NotFoundError to Node-style ENOENT on stat', async () => {
+    const fs = createFsAdapter(root)
+    await expect(fs.promises.stat('/does-not-exist')).rejects.toMatchObject({
+      code: 'ENOENT',
+    })
+  })
 })
