@@ -6,7 +6,7 @@ import { listChangedFiles, countLineChanges } from './line-diff'
 const decoder = new TextDecoder('utf-8', { fatal: false })
 
 async function readBlobText(ctx: RepoContext, oid: string): Promise<string> {
-  const { blob } = await git.readBlob({ fs: ctx.fs, dir: ctx.dir, gitdir: ctx.gitdir, oid })
+  const { blob } = await git.readBlob({ fs: ctx.fs, dir: ctx.dir, gitdir: ctx.gitdir, oid, cache: ctx.cache })
   return decoder.decode(blob)
 }
 

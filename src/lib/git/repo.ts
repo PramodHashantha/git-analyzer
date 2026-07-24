@@ -5,6 +5,15 @@ export interface RepoContext {
   fs: PromiseFsClient
   dir: string
   gitdir: string
+  /**
+   * Shared object/pack-index cache passed to every isomorphic-git call.
+   * Without it, isomorphic-git re-reads and re-parses every pack index on
+   * every single object read — catastrophic for packed repos with many
+   * objects (blame reads the same objects thousands of times). One cache
+   * per analysis run keeps parsed pack indexes and inflated objects in
+   * memory, turning an O(objects × packs) reparse into a one-time cost.
+   */
+  cache: object
 }
 
 export class NotAGitRepoError extends Error {}
@@ -36,7 +45,7 @@ export async function assertIsGitRepo(fs: PromiseFsClient, dir: string): Promise
 }
 
 export function makeRepoContext(fs: PromiseFsClient, dir: string): RepoContext {
-  return { fs, dir, gitdir: joinPath(dir, '.git') }
+  return { fs, dir, gitdir: joinPath(dir, '.git'), cache: {} }
 }
 
 export async function listBranches(ctx: RepoContext): Promise<string[]> {

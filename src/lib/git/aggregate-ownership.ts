@@ -9,6 +9,7 @@ async function listFilesAtCommit(ctx: RepoContext, oid: string): Promise<string[
     fs: ctx.fs,
     dir: ctx.dir,
     gitdir: ctx.gitdir,
+    cache: ctx.cache,
     trees: [git.TREE({ ref: oid })],
     map: async (filepath, [entry]) => {
       if (filepath === '.' || !entry) return

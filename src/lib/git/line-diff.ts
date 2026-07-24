@@ -23,6 +23,7 @@ export async function listChangedFiles(
     fs: ctx.fs,
     dir: ctx.dir,
     gitdir: ctx.gitdir,
+    cache: ctx.cache,
     trees,
     map: async (filepath, entries) => {
       if (filepath === '.') return

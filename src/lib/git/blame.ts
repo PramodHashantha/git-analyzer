@@ -11,7 +11,7 @@ async function readFileLinesAtCommit(
 ): Promise<string[]> {
   try {
     const { blob } = await git.readBlob({
-      fs: ctx.fs, dir: ctx.dir, gitdir: ctx.gitdir, oid: commitOid, filepath,
+      fs: ctx.fs, dir: ctx.dir, gitdir: ctx.gitdir, oid: commitOid, filepath, cache: ctx.cache,
     })
     const text = decoder.decode(blob)
     if (!text.length) return []
@@ -36,7 +36,7 @@ export async function blameFile(
   let currentLines = headLines
 
   while (currentOid && positions.some((p) => p !== null)) {
-    const commit = await git.readCommit({ fs: ctx.fs, dir: ctx.dir, gitdir: ctx.gitdir, oid: currentOid })
+    const commit = await git.readCommit({ fs: ctx.fs, dir: ctx.dir, gitdir: ctx.gitdir, oid: currentOid, cache: ctx.cache })
     const parentOid = commit.commit.parent[0] ?? null
     const parentLines = parentOid ? await readFileLinesAtCommit(ctx, parentOid, filepath) : []
 
@@ -100,7 +100,7 @@ export async function computeFileOwnership(
   for (const oid of owners) {
     let author = authorNameCache.get(oid)
     if (!author) {
-      const commit = await git.readCommit({ fs: ctx.fs, dir: ctx.dir, gitdir: ctx.gitdir, oid })
+      const commit = await git.readCommit({ fs: ctx.fs, dir: ctx.dir, gitdir: ctx.gitdir, oid, cache: ctx.cache })
       author = commit.commit.author.name
       authorNameCache.set(oid, author)
     }
