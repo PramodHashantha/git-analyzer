@@ -1,0 +1,38 @@
+{
+  "name": "git-analyser",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "isomorphic-git": "^1.27.1",
+    "diff": "^5.2.0",
+    "idb": "^8.0.0",
+    "date-fns": "^3.6.0",
+    "recharts": "^2.12.7"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@types/diff": "^5.2.1",
+    "@types/wicg-file-system-access": "^2023.10.5",
+    "@vitejs/plugin-react": "^4.3.1",
+    "@testing-library/react": "^16.0.0",
+    "@testing-library/jest-dom": "^6.4.8",
+    "@isomorphic-git/lightning-fs": "^4.6.2",
+    "typescript": "^5.5.4",
+    "vite": "^5.4.0",
+    "vitest": "^2.0.5",
+    "jsdom": "^24.1.1",
+    "tailwindcss": "^4.0.0",
+    "@tailwindcss/vite": "^4.0.0"
+  }
+}
