@@ -48,4 +48,28 @@ describe('blameFile', () => {
 
     expect(counts).toEqual({ Alice: 2, Bob: 1 })
   })
+
+  it('attributes lines correctly when the file has no trailing newline', async () => {
+    const { fs, dir, headOid } = await buildFixtureRepo('blame-test-3', [
+      {
+        message: 'first',
+        author: { name: 'Alice', email: 'alice@example.com' },
+        files: { 'a.txt': 'one\ntwo' },
+      },
+      {
+        message: 'second',
+        author: { name: 'Bob', email: 'bob@example.com' },
+        files: { 'a.txt': 'one\ntwo\nthree' },
+      },
+    ])
+
+    const ctx = makeRepoContext(fs, dir)
+    const commits = await walkHistory(ctx, 'main')
+    const owners = await blameFile(ctx, headOid, 'a.txt')
+
+    expect(owners).toHaveLength(3)
+    expect(owners[0]).toBe(commits[1].oid) // "one" from first commit
+    expect(owners[1]).toBe(commits[1].oid) // "two" from first commit
+    expect(owners[2]).toBe(commits[0].oid) // "three" from second commit
+  })
 })

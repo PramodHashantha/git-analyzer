@@ -12,7 +12,14 @@ import { DateRangeFilter } from './components/DateRangeFilter'
 import { AuthorFilter } from './components/AuthorFilter'
 import { isFileSystemAccessSupported } from './lib/browser-support'
 import { useRepoAnalysis } from './hooks/useRepoAnalysis'
-import { filterByAuthors, filterActivityByDateRange, type DateRange } from './lib/filters'
+import {
+  filterByAuthors,
+  filterActivityByDateRange,
+  filterCommitStatsByDateRange,
+  filterCommitStatsByAuthors,
+  type DateRange,
+} from './lib/filters'
+import { aggregateAuthorTotals, aggregateCommitPatterns } from './lib/git/aggregate-churn'
 
 export default function App() {
   const [root, setRoot] = useState<FileSystemDirectoryHandle | null>(null)
@@ -24,13 +31,18 @@ export default function App() {
 
   const filtered = useMemo(() => {
     if (!analysis) return null
+    const dateFilteredStats = filterCommitStatsByDateRange(analysis.commitStats, dateRange)
+    const authorAndDateFilteredStats = filterCommitStatsByAuthors(
+      dateFilteredStats,
+      selectedAuthors
+    )
     return {
-      authorTotals: filterByAuthors(analysis.authorTotals, selectedAuthors),
+      authorTotals: aggregateAuthorTotals(authorAndDateFilteredStats),
       activity: filterActivityByDateRange(
         filterByAuthors(analysis.activity, selectedAuthors),
         dateRange
       ),
-      commitPatterns: filterByAuthors(analysis.commitPatterns, selectedAuthors),
+      commitPatterns: aggregateCommitPatterns(authorAndDateFilteredStats),
     }
   }, [analysis, selectedAuthors, dateRange])
 
