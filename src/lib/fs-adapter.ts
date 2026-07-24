@@ -65,12 +65,25 @@ export function createFsAdapter(root: FileSystemDirectoryHandle): PromiseFsClien
   }
 
   async function readFile(filepath: string, opts?: { encoding?: string } | string) {
-    const handle = await getFileHandle(filepath)
-    const file = await handle.getFile()
-    const buffer = new Uint8Array(await file.arrayBuffer())
-    const encoding = typeof opts === 'string' ? opts : opts?.encoding
-    if (encoding === 'utf8') return new TextDecoder().decode(buffer)
-    return buffer
+    try {
+      const handle = await getFileHandle(filepath)
+      const file = await handle.getFile()
+      const buffer = new Uint8Array(await file.arrayBuffer())
+      const encoding = typeof opts === 'string' ? opts : opts?.encoding
+      if (encoding === 'utf8') return new TextDecoder().decode(buffer)
+      return buffer
+    } catch (err) {
+      // isomorphic-git probes fs capability via a bare `readFile()` call with
+      // no arguments (see isPromiseFs in its source) purely to check whether
+      // the result is a Promise — it always rejects here by design and is
+      // caught internally, so it's not a real failure and not worth logging.
+      const isCapabilityProbe = filepath === undefined
+      const isExpectedMissingFile = err instanceof Error && err.message.startsWith('ENOENT')
+      if (!isCapabilityProbe && !isExpectedMissingFile) {
+        console.error(`[fs-adapter] readFile failed for "${filepath}":`, err)
+      }
+      throw err
+    }
   }
 
   async function readdir(filepath: string): Promise<string[]> {
