@@ -8,6 +8,7 @@ import {
   resolveBranchHead,
   getCurrentBranch,
   NotAGitRepoError,
+  UnsupportedWorktreeError,
 } from '../../../src/lib/git/repo'
 
 describe('repo', () => {
@@ -32,5 +33,16 @@ describe('repo', () => {
     const fs = new LightningFS('repo-test-2')
     await fs.promises.mkdir('/plain')
     await expect(assertIsGitRepo(fs, '/plain')).rejects.toBeInstanceOf(NotAGitRepoError)
+  })
+
+  it('throws UnsupportedWorktreeError when .git is a file, not a folder', async () => {
+    const fs = new LightningFS('repo-test-3')
+    await fs.promises.mkdir('/worktree')
+    await fs.promises.writeFile(
+      '/worktree/.git',
+      'gitdir: /path/to/main/repo/.git/worktrees/worktree\n',
+      'utf8'
+    )
+    await expect(assertIsGitRepo(fs, '/worktree')).rejects.toBeInstanceOf(UnsupportedWorktreeError)
   })
 })

@@ -9,16 +9,29 @@ export interface RepoContext {
 
 export class NotAGitRepoError extends Error {}
 
+export class UnsupportedWorktreeError extends Error {}
+
 function joinPath(dir: string, ...parts: string[]): string {
   const base = dir.endsWith('/') ? dir.slice(0, -1) : dir
   return [base, ...parts].join('/')
 }
 
 export async function assertIsGitRepo(fs: PromiseFsClient, dir: string): Promise<void> {
+  let stat
   try {
-    await fs.promises.stat(joinPath(dir, '.git'))
+    stat = await fs.promises.stat(joinPath(dir, '.git'))
   } catch {
     throw new NotAGitRepoError('No .git directory found in the selected folder')
+  }
+  // A linked git worktree (or submodule) has `.git` as a text file pointing
+  // at the real git directory, which typically lives outside the selected
+  // folder — the File System Access API cannot follow that pointer, since
+  // browsers sandbox access to the picked folder and its descendants only.
+  if (!stat.isDirectory()) {
+    throw new UnsupportedWorktreeError(
+      'This folder looks like a git worktree or submodule (.git is a file, not a folder). ' +
+        'Select the main repository folder instead.'
+    )
   }
 }
 
