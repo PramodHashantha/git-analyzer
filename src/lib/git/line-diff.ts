@@ -32,7 +32,7 @@ export async function listChangedFiles(
       // Skip trees and anything that isn't a plain blob (e.g. mode-160000
       // submodule entries report type 'commit') so a submodule reference
       // never reaches readBlob and throws.
-      const presentTypes = [beforeType, afterType].filter((t): t is string => t !== undefined)
+      const presentTypes = [beforeType, afterType].filter((t) => t !== undefined)
       if (presentTypes.some((t) => t !== 'blob')) return
 
       const beforeOid = beforeEntry ? await beforeEntry.oid() : null

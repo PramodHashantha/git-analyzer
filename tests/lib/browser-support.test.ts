@@ -12,7 +12,6 @@ describe('isFileSystemAccessSupported', () => {
   })
 
   it('returns true when showDirectoryPicker is present', () => {
-    // @ts-expect-error test stub
     window.showDirectoryPicker = vi.fn()
     expect(isFileSystemAccessSupported()).toBe(true)
   })
