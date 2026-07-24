@@ -80,6 +80,7 @@ export function useRepoAnalysis() {
       await setCachedAnalysis(cacheKey, analysis)
       setStatus({ phase: 'done', analysis })
     } catch (error) {
+      console.error('Repo analysis failed:', error)
       const permissionDenied = error instanceof DOMException && error.name === 'NotAllowedError'
       setStatus({
         phase: 'error',
