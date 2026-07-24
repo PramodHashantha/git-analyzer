@@ -50,12 +50,28 @@ async function withEnoent<T>(fn: () => Promise<T>): Promise<T> {
 }
 
 export function createFsAdapter(root: FileSystemDirectoryHandle): PromiseFsClient {
-  async function resolveDir(segments: string[]): Promise<FileSystemDirectoryHandle> {
-    let dir = root
-    for (const segment of segments) {
-      dir = await withEnoent(() => dir.getDirectoryHandle(segment))
+  // Cache resolved directory handles by path so reads don't re-navigate from
+  // root (root -> .git -> objects -> XX -> ...) on every single read — a huge
+  // cost when blame issues tens of thousands of reads. The filesystem is
+  // read-only for the lifetime of an adapter (one analysis run), so handles
+  // never go stale. Promises are cached (not just handles) so concurrent
+  // requests for the same directory share one navigation; a rejected lookup
+  // is evicted so a later, legitimately-different call can retry.
+  const dirHandleCache = new Map<string, Promise<FileSystemDirectoryHandle>>()
+
+  function resolveDir(segments: string[]): Promise<FileSystemDirectoryHandle> {
+    const key = segments.join('/')
+    let cached = dirHandleCache.get(key)
+    if (!cached) {
+      cached = (async () => {
+        if (segments.length === 0) return root
+        const parent = await resolveDir(segments.slice(0, -1))
+        return withEnoent(() => parent.getDirectoryHandle(segments[segments.length - 1]))
+      })()
+      dirHandleCache.set(key, cached)
+      cached.catch(() => dirHandleCache.delete(key))
     }
-    return dir
+    return cached
   }
 
   async function getFileHandle(filepath: string): Promise<FileSystemFileHandle> {

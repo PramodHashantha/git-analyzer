@@ -2,6 +2,7 @@ import * as git from 'isomorphic-git'
 import type { CommitInfo, CommitStats, FileLineStats } from '../types'
 import type { RepoContext } from './repo'
 import { listChangedFiles, countLineChanges } from './line-diff'
+import { mapWithConcurrency, GIT_READ_CONCURRENCY } from '../concurrency'
 
 const decoder = new TextDecoder('utf-8', { fatal: false })
 
@@ -46,10 +47,10 @@ export async function computeAllCommitStats(
   commits: CommitInfo[],
   onProgress?: (done: number, total: number) => void
 ): Promise<CommitStats[]> {
-  const results: CommitStats[] = []
-  for (let i = 0; i < commits.length; i++) {
-    results.push(await computeCommitStats(ctx, commits[i]))
-    onProgress?.(i + 1, commits.length)
-  }
-  return results
+  return mapWithConcurrency(
+    commits,
+    GIT_READ_CONCURRENCY,
+    (commit) => computeCommitStats(ctx, commit),
+    onProgress
+  )
 }

@@ -2,6 +2,7 @@ import * as git from 'isomorphic-git'
 import type { FileOwnership, AuthorOwnership } from '../types'
 import type { RepoContext } from './repo'
 import { computeFileOwnership } from './blame'
+import { mapWithConcurrency, GIT_READ_CONCURRENCY } from '../concurrency'
 
 async function listFilesAtCommit(ctx: RepoContext, oid: string): Promise<string[]> {
   const files: string[] = []
@@ -30,22 +31,31 @@ export async function aggregateOwnership(
   onProgress?: (done: number, total: number) => void
 ): Promise<{ files: FileOwnership[]; authors: AuthorOwnership[] }> {
   const filepaths = await listFilesAtCommit(ctx, headOid)
+  const authorNameCache = new Map<string, string>()
+
+  // Blame each file concurrently (each blame is an independent history walk).
+  // Results come back in filepath order, so the aggregation below stays
+  // deterministic regardless of which files finish first.
+  const perFileOwnerCounts = await mapWithConcurrency(
+    filepaths,
+    GIT_READ_CONCURRENCY,
+    (filepath) => computeFileOwnership(ctx, headOid, filepath, authorNameCache),
+    onProgress
+  )
+
   const files: FileOwnership[] = []
   const authorLineTotals = new Map<string, number>()
-  const authorNameCache = new Map<string, string>()
   let grandTotal = 0
 
   for (let i = 0; i < filepaths.length; i++) {
-    const filepath = filepaths[i]
-    const ownerLineCounts = await computeFileOwnership(ctx, headOid, filepath, authorNameCache)
+    const ownerLineCounts = perFileOwnerCounts[i]
     const totalLines = Object.values(ownerLineCounts).reduce((a, b) => a + b, 0)
 
-    files.push({ filepath, totalLines, ownerLineCounts })
+    files.push({ filepath: filepaths[i], totalLines, ownerLineCounts })
     for (const [author, count] of Object.entries(ownerLineCounts)) {
       authorLineTotals.set(author, (authorLineTotals.get(author) ?? 0) + count)
       grandTotal += count
     }
-    onProgress?.(i + 1, filepaths.length)
   }
 
   const authors: AuthorOwnership[] = [...authorLineTotals.entries()]
