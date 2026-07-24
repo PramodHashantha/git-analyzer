@@ -8,13 +8,17 @@ export interface FixtureCommit {
   timestampSeconds?: number
 }
 
-export async function buildFixtureRepo(name: string, commits: FixtureCommit[]) {
+export async function buildFixtureRepo(
+  name: string,
+  commits: FixtureCommit[],
+  mountAt = '/repo'
+) {
   const fsInstance = new LightningFS(name)
   const fs = fsInstance
-  const dir = '/repo'
-  const gitdir = '/repo/.git'
+  const dir = mountAt
+  const gitdir = `${mountAt === '/' ? '' : mountAt}/.git`
 
-  await fs.promises.mkdir(dir)
+  await fs.promises.mkdir(dir).catch(() => {})
   await git.init({ fs, dir, gitdir, defaultBranch: 'main' })
 
   let headOid = ''
