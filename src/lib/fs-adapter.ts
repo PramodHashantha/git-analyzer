@@ -65,10 +65,14 @@ export function createFsAdapter(root: FileSystemDirectoryHandle): PromiseFsClien
   }
 
   async function readFile(filepath: string, opts?: { encoding?: string } | string) {
+    const isObjectRead = typeof filepath === 'string' && filepath.includes('/objects/')
     try {
       const handle = await getFileHandle(filepath)
       const file = await handle.getFile()
       const buffer = new Uint8Array(await file.arrayBuffer())
+      if (isObjectRead) {
+        console.debug(`[fs-diag] readFile OK "${filepath}" (${buffer.byteLength} bytes)`)
+      }
       const encoding = typeof opts === 'string' ? opts : opts?.encoding
       if (encoding === 'utf8') return new TextDecoder().decode(buffer)
       return buffer
@@ -79,7 +83,11 @@ export function createFsAdapter(root: FileSystemDirectoryHandle): PromiseFsClien
       // caught internally, so it's not a real failure and not worth logging.
       const isCapabilityProbe = filepath === undefined
       const isExpectedMissingFile = err instanceof Error && err.message.startsWith('ENOENT')
-      if (!isCapabilityProbe && !isExpectedMissingFile) {
+      if (isObjectRead) {
+        const name = err instanceof Error ? err.name : typeof err
+        const msg = err instanceof Error ? err.message : String(err)
+        console.debug(`[fs-diag] readFile FAIL "${filepath}" -> ${name}: ${msg}`)
+      } else if (!isCapabilityProbe && !isExpectedMissingFile) {
         console.error(`[fs-adapter] readFile failed for "${filepath}":`, err)
       }
       throw err
@@ -88,10 +96,23 @@ export function createFsAdapter(root: FileSystemDirectoryHandle): PromiseFsClien
 
   async function readdir(filepath: string): Promise<string[]> {
     const segments = splitPath(filepath)
-    const dir = segments.length ? await resolveDir(segments) : root
-    const names: string[] = []
-    for await (const name of dir.keys()) names.push(name)
-    return names
+    const isPackDir = typeof filepath === 'string' && filepath.includes('objects/pack')
+    try {
+      const dir = segments.length ? await resolveDir(segments) : root
+      const names: string[] = []
+      for await (const name of dir.keys()) names.push(name)
+      if (isPackDir) {
+        console.debug(`[fs-diag] readdir OK "${filepath}" -> [${names.join(', ')}]`)
+      }
+      return names
+    } catch (err) {
+      if (isPackDir) {
+        const name = err instanceof Error ? err.name : typeof err
+        const msg = err instanceof Error ? err.message : String(err)
+        console.debug(`[fs-diag] readdir FAIL "${filepath}" -> ${name}: ${msg}`)
+      }
+      throw err
+    }
   }
 
   async function stat(filepath: string): Promise<Stat> {
