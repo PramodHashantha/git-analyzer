@@ -7,6 +7,7 @@ const makeAnalysis = (): RepoAnalysis => ({
   repoName: 'demo',
   branch: 'main',
   branches: ['main'],
+  branchStatus: { hasUpstream: false, ahead: 0, behind: 0 },
   headOid: 'abc123',
   commits: [],
   commitStats: [],
