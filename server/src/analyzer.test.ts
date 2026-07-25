@@ -47,4 +47,18 @@ describe('analyzer', () => {
     const analysis = await computeAnalysis(dir, head)
     expect(analysis.commits.some((c) => c.message === 'on other')).toBe(true)
   })
+
+  it('rejects a branch override that is not a real branch (argument injection guard)', async () => {
+    const dir = buildRealGitRepo((run, d) => {
+      fs.writeFileSync(`${d}/a.txt`, 'base\n')
+      run(['add', '-A'])
+      run(['-c', 'user.name=Alice', '-c', 'user.email=alice@example.com', 'commit', '-q', '-m', 'base'])
+    })
+
+    const suspiciousPath = `${dir}/should-not-exist.txt`
+    const injectionLikeBranch = `--output=${suspiciousPath}`
+
+    await expect(resolveRepoHead(dir, injectionLikeBranch)).rejects.toThrow()
+    expect(fs.existsSync(suspiciousPath)).toBe(false)
+  })
 })

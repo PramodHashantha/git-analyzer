@@ -1,5 +1,5 @@
 import path from 'node:path'
-import { assertIsGitRepo, listBranches, getCurrentBranch, resolveBranchHead } from './git/repo'
+import { assertIsGitRepo, listBranches, getCurrentBranch, resolveBranchHead, InvalidBranchError } from './git/repo'
 import { readHistory } from './git/history'
 import { readChurnByCommit } from './git/churn'
 import { aggregateOwnership } from './git/ownership'
@@ -21,6 +21,9 @@ export interface RepoHead {
 export async function resolveRepoHead(repoPath: string, branchOverride?: string): Promise<RepoHead> {
   await assertIsGitRepo(repoPath)
   const branches = await listBranches(repoPath)
+  if (branchOverride !== undefined && !branches.includes(branchOverride)) {
+    throw new InvalidBranchError(`Unknown branch: ${branchOverride}`)
+  }
   const branch = branchOverride ?? (await getCurrentBranch(repoPath)) ?? branches[0]
   const headOid = await resolveBranchHead(repoPath, branch)
   return { branch, branches, headOid }

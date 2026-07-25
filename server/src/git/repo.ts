@@ -2,6 +2,15 @@ import { runGit } from './exec'
 
 export class NotAGitRepoError extends Error {}
 
+/**
+ * Thrown when a caller-supplied branch override does not match any branch
+ * returned by `listBranches`. Guards against passing untrusted input
+ * (e.g. an HTTP query parameter) straight through to `git log <branch> ...`
+ * as a positional argument, where a value starting with `-` would otherwise
+ * be parsed by git as an option (argument injection).
+ */
+export class InvalidBranchError extends Error {}
+
 export async function assertIsGitRepo(repoPath: string): Promise<void> {
   try {
     const out = await runGit(repoPath, ['rev-parse', '--is-inside-work-tree'])

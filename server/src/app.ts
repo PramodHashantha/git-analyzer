@@ -2,7 +2,7 @@ import express from 'express'
 import path from 'node:path'
 import { resolveRepoHead, computeAnalysis } from './analyzer'
 import { getCached, setCached, makeCacheKey } from './cache'
-import { NotAGitRepoError } from './git/repo'
+import { NotAGitRepoError, InvalidBranchError } from './git/repo'
 
 export function createApp(staticDir?: string): express.Express {
   const app = express()
@@ -30,7 +30,7 @@ export function createApp(staticDir?: string): express.Express {
       setCached(key, analysis)
       res.json(analysis)
     } catch (err) {
-      if (err instanceof NotAGitRepoError) {
+      if (err instanceof NotAGitRepoError || err instanceof InvalidBranchError) {
         res.status(400).json({ error: err.message })
         return
       }

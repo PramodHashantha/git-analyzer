@@ -52,5 +52,9 @@ dashboard (`src/`).
 This project began as a PowerShell script
 (`docs/original-powershell-script.txt`) that used `git shortlog` and
 `git log --numstat` to tally per-author line changes. The design rationale
-for turning it into a hosted dashboard is in
-`docs/superpowers/specs/2026-07-24-git-contribution-dashboard-design.md`.
+for turning it into a dashboard is in
+`docs/superpowers/specs/2026-07-24-git-contribution-dashboard-design.md`;
+that first version ran entirely in the browser. It was later replaced with
+the current fully local, backend-driven architecture — no hosted/shared
+version — per
+`docs/superpowers/specs/2026-07-25-local-git-backend-design.md`.
