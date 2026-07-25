@@ -3,6 +3,35 @@ import { diffLines } from 'diff'
 import type { RepoContext } from './repo'
 import { decodeLines, linesToText } from './line-text'
 
+/**
+ * Map each line index in `currentLines` to its index in `parentLines` for lines
+ * UNCHANGED between them. A current index absent from the returned map was
+ * added or changed relative to the parent. Uses the shared diff + newline
+ * normalization so results are consistent across the codebase.
+ */
+export function mapUnchangedToParent(
+  parentLines: string[],
+  currentLines: string[]
+): Map<number, number> {
+  const parts = diffLines(linesToText(parentLines), linesToText(currentLines))
+  const curToParent = new Map<number, number>()
+  let curIdx = 0
+  let parIdx = 0
+  for (const part of parts) {
+    const count = part.count ?? 0
+    if (part.added) {
+      curIdx += count
+    } else if (part.removed) {
+      parIdx += count
+    } else {
+      for (let k = 0; k < count; k++) curToParent.set(curIdx + k, parIdx + k)
+      curIdx += count
+      parIdx += count
+    }
+  }
+  return curToParent
+}
+
 async function readFileLinesAtCommit(
   ctx: RepoContext,
   commitOid: string,
@@ -35,40 +64,17 @@ export async function blameFile(
     const parentOid = commit.commit.parent[0] ?? null
     const parentLines = parentOid ? await readFileLinesAtCommit(ctx, parentOid, filepath) : []
 
-    const parentText = linesToText(parentLines)
-    const currentText = linesToText(currentLines)
-    const parts = diffLines(parentText, currentText)
-
-    const addedAtCurIdx = new Set<number>()
-    const curToParIdx = new Map<number, number>()
-    let curIdx = 0
-    let parIdx = 0
-
-    for (const part of parts) {
-      const lineCount = part.count ?? 0
-      if (part.added) {
-        for (let k = 0; k < lineCount; k++) addedAtCurIdx.add(curIdx + k)
-        curIdx += lineCount
-      } else if (part.removed) {
-        parIdx += lineCount
-      } else {
-        for (let k = 0; k < lineCount; k++) curToParIdx.set(curIdx + k, parIdx + k)
-        curIdx += lineCount
-        parIdx += lineCount
-      }
-    }
-
+    const curToPar = mapUnchangedToParent(parentLines, currentLines)
     const currentCommitOid = currentOid
     for (let headLine = 0; headLine < positions.length; headLine++) {
       const pos = positions[headLine]
       if (pos === null) continue
-      if (addedAtCurIdx.has(pos)) {
+      const mapped = curToPar.get(pos)
+      if (mapped === undefined) {
         owners[headLine] = currentCommitOid
         positions[headLine] = null
       } else {
-        const mapped = curToParIdx.get(pos)
-        positions[headLine] = mapped ?? null
-        if (mapped === undefined) owners[headLine] = currentCommitOid
+        positions[headLine] = mapped
       }
     }
 
