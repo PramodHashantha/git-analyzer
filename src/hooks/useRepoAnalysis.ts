@@ -13,6 +13,7 @@ import {
   aggregateAuthorTotals,
   aggregateActivityOverTime,
   aggregateCommitPatterns,
+  filterNonMergeCommits,
 } from '../lib/git/aggregate-churn'
 import { aggregateMergeInsights } from '../lib/git/aggregate-merges'
 import { aggregateOwnership } from '../lib/git/aggregate-ownership'
@@ -51,8 +52,9 @@ export function useRepoAnalysis() {
 
       setStatus({ phase: 'walking-history' })
       const commits = await walkHistory(ctx, branch)
+      const churnCommits = filterNonMergeCommits(commits)
 
-      const commitStats = await computeAllCommitStats(ctx, commits, (done, total) =>
+      const commitStats = await computeAllCommitStats(ctx, churnCommits, (done, total) =>
         setStatus({ phase: 'computing-churn', done, total })
       )
 

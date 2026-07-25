@@ -1,5 +1,14 @@
 import { startOfWeek, startOfMonth } from 'date-fns'
-import type { AuthorTotals, ActivityBucket, CommitPatternSummary, CommitStats } from '../types'
+import type { AuthorTotals, ActivityBucket, CommitPatternSummary, CommitStats, CommitInfo } from '../types'
+
+/**
+ * Merge commits combine branches rather than authoring code; git's own
+ * `log --numstat` shows nothing for them. Exclude them from contribution
+ * churn so mergers aren't credited with everyone's merged-in work.
+ */
+export function filterNonMergeCommits(commits: CommitInfo[]): CommitInfo[] {
+  return commits.filter((c) => !c.isMerge)
+}
 
 export function aggregateAuthorTotals(commitStats: CommitStats[]): AuthorTotals[] {
   const byAuthor = new Map<string, AuthorTotals>()

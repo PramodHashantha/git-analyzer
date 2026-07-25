@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import type { CommitStats } from '../../../src/lib/types'
+import type { CommitStats, CommitInfo } from '../../../src/lib/types'
 import {
   aggregateAuthorTotals,
   aggregateActivityOverTime,
   aggregateCommitPatterns,
+  filterNonMergeCommits,
 } from '../../../src/lib/git/aggregate-churn'
 
 function makeStat(overrides: Partial<CommitStats['commit']> & { totalAdded: number; totalDeleted: number }): CommitStats {
@@ -72,5 +73,21 @@ describe('aggregateCommitPatterns', () => {
     expect(patterns[0].largestCommit).toEqual({ oid: 'b', lines: 50 })
     expect(patterns[0].dayOfWeekCounts).toHaveLength(7)
     expect(patterns[0].hourOfDayCounts).toHaveLength(24)
+  })
+})
+
+function commit(oid: string, isMerge: boolean): CommitInfo {
+  return { oid, parentOids: [], author: 'A', email: 'a@x.com', timestamp: 0, message: 'm', isMerge }
+}
+
+describe('filterNonMergeCommits', () => {
+  it('drops merge commits and keeps the rest in order', () => {
+    const commits = [commit('a', false), commit('b', true), commit('c', false)]
+    expect(filterNonMergeCommits(commits).map((c) => c.oid)).toEqual(['a', 'c'])
+  })
+
+  it('returns everything when there are no merges', () => {
+    const commits = [commit('a', false), commit('b', false)]
+    expect(filterNonMergeCommits(commits)).toHaveLength(2)
   })
 })

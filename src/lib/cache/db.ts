@@ -24,8 +24,11 @@ function getDb() {
   return dbPromise
 }
 
+// Bump when analysis logic changes so pre-change cached results are not served.
+const ANALYSIS_VERSION = 2
+
 export function makeCacheKey(repoName: string, branch: string, headOid: string): string {
-  return `${repoName}::${branch}::${headOid}`
+  return `v${ANALYSIS_VERSION}::${repoName}::${branch}::${headOid}`
 }
 
 export async function getCachedAnalysis(key: string): Promise<RepoAnalysis | null> {
