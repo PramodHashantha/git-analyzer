@@ -25,7 +25,8 @@ function getDb() {
 }
 
 // Bump when analysis logic changes so pre-change cached results are not served.
-const ANALYSIS_VERSION = 2
+// v3: ownership now excludes binary files (images/fonts were counted as lines).
+const ANALYSIS_VERSION = 3
 
 export function makeCacheKey(repoName: string, branch: string, headOid: string): string {
   return `v${ANALYSIS_VERSION}::${repoName}::${branch}::${headOid}`
