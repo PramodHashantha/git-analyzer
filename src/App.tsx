@@ -8,6 +8,7 @@ import { CommitPatternsHeatmap } from './components/Dashboard/CommitPatternsHeat
 import { OwnershipView } from './components/Dashboard/OwnershipView'
 import { MergeInsightsTable } from './components/Dashboard/MergeInsightsTable'
 import { HotspotsTable } from './components/Dashboard/HotspotsTable'
+import { BusFactorTable } from './components/Dashboard/BusFactorTable'
 import { BranchSelector } from './components/BranchSelector'
 import { DateRangeFilter } from './components/DateRangeFilter'
 import { AuthorFilter } from './components/AuthorFilter'
@@ -21,6 +22,7 @@ import {
 } from './lib/filters'
 import { aggregateAuthorTotals, aggregateCommitPatterns } from '../shared/aggregate-churn'
 import { aggregateHotspots } from '../shared/aggregate-hotspots'
+import { aggregateBusFactor } from '../shared/aggregate-bus-factor'
 
 export default function App() {
   const [repoPath, setRepoPath] = useState<string | null>(null)
@@ -45,6 +47,11 @@ export default function App() {
     }
   }, [analysis, selectedAuthors, dateRange])
 
+  const busFactor = useMemo(() => {
+    if (!analysis) return null
+    return aggregateBusFactor(analysis.fileOwnership)
+  }, [analysis])
+
   const handleRepoSelected = async (path: string) => {
     setRepoPath(path)
     setSelectedAuthors([])
@@ -64,7 +71,7 @@ export default function App() {
 
       {repoPath && !analysis && <StatusPanel status={status} />}
 
-      {repoPath && analysis && filtered && (
+      {repoPath && analysis && filtered && busFactor && (
         <div className="mt-6 space-y-6">
           <StaleBranchBanner branch={analysis.branch} status={analysis.branchStatus} />
           <div className="flex flex-wrap items-center gap-4 rounded bg-white p-4 shadow">
@@ -85,6 +92,7 @@ export default function App() {
           <CommitPatternsHeatmap patterns={filtered.commitPatterns} />
           <MergeInsightsTable mergeInsights={analysis.mergeInsights} />
           <HotspotsTable hotspots={filtered.hotspots} />
+          <BusFactorTable busFactor={busFactor} />
           <OwnershipView
             authorOwnership={analysis.authorOwnership}
             fileOwnership={analysis.fileOwnership}

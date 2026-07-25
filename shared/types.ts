@@ -76,6 +76,13 @@ export interface HotspotEntry {
   score: number
 }
 
+export interface BusFactorEntry {
+  filepath: string
+  totalLines: number
+  topAuthor: string
+  topAuthorPercentage: number
+}
+
 export interface RepoAnalysis {
   repoName: string
   branch: string
