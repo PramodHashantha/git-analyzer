@@ -47,44 +47,82 @@ async function readFileLinesAtCommit(
   }
 }
 
+interface Claim {
+  headLine: number
+  pos: number
+}
+
 export async function blameFile(
   ctx: RepoContext,
   headOid: string,
   filepath: string
 ): Promise<string[]> {
   const headLines = await readFileLinesAtCommit(ctx, headOid, filepath)
+  if (headLines.length === 0) return []
   const owners: (string | null)[] = new Array(headLines.length).fill(null)
-  const positions: (number | null)[] = headLines.map((_, i) => i)
 
-  let currentOid: string | null = headOid
-  let currentLines = headLines
+  // Unresolved line claims grouped by their current suspect commit. Each HEAD
+  // line is in exactly one group at a time (it moves suspect to suspect).
+  const pending = new Map<string, Claim[]>()
+  pending.set(headOid, headLines.map((_, i) => ({ headLine: i, pos: i })))
 
-  while (currentOid && positions.some((p) => p !== null)) {
-    const commit = await git.readCommit({ fs: ctx.fs, dir: ctx.dir, gitdir: ctx.gitdir, oid: currentOid, cache: ctx.cache })
-    const parentOid = commit.commit.parent[0] ?? null
-    const parentLines = parentOid ? await readFileLinesAtCommit(ctx, parentOid, filepath) : []
+  const commitCache = new Map<string, { parent: string[]; ts: number }>()
+  async function getCommit(oid: string): Promise<{ parent: string[]; ts: number }> {
+    let c = commitCache.get(oid)
+    if (!c) {
+      const { commit } = await git.readCommit({ fs: ctx.fs, dir: ctx.dir, gitdir: ctx.gitdir, oid, cache: ctx.cache })
+      c = { parent: commit.parent, ts: commit.committer.timestamp }
+      commitCache.set(oid, c)
+    }
+    return c
+  }
 
-    const curToPar = mapUnchangedToParent(parentLines, currentLines)
-    const currentCommitOid = currentOid
-    for (let headLine = 0; headLine < positions.length; headLine++) {
-      const pos = positions[headLine]
-      if (pos === null) continue
-      const mapped = curToPar.get(pos)
-      if (mapped === undefined) {
-        owners[headLine] = currentCommitOid
-        positions[headLine] = null
-      } else {
-        positions[headLine] = mapped
+  while (pending.size > 0) {
+    // Process the newest pending suspect (git orders blame by commit date).
+    let suspect = ''
+    let newestTs = -Infinity
+    for (const oid of pending.keys()) {
+      const { ts } = await getCommit(oid)
+      if (ts > newestTs) {
+        newestTs = ts
+        suspect = oid
       }
     }
+    const claims = pending.get(suspect)!
+    pending.delete(suspect)
 
-    currentOid = parentOid
-    currentLines = parentLines
+    const { parent: parents } = await getCommit(suspect)
+    if (parents.length === 0) {
+      for (const c of claims) owners[c.headLine] = suspect
+      continue
+    }
+
+    const currentLines = await readFileLinesAtCommit(ctx, suspect, filepath)
+    let remaining = claims
+    for (const parentOid of parents) {
+      if (remaining.length === 0) break
+      const parentLines = await readFileLinesAtCommit(ctx, parentOid, filepath)
+      const curToPar = mapUnchangedToParent(parentLines, currentLines)
+      const stillRemaining: Claim[] = []
+      const passed: Claim[] = []
+      for (const c of remaining) {
+        const parentPos = curToPar.get(c.pos)
+        if (parentPos !== undefined) passed.push({ headLine: c.headLine, pos: parentPos })
+        else stillRemaining.push(c)
+      }
+      if (passed.length) {
+        const list = pending.get(parentOid) ?? []
+        list.push(...passed)
+        pending.set(parentOid, list)
+      }
+      remaining = stillRemaining
+    }
+    // Lines changed relative to every parent were introduced by this commit.
+    for (const c of remaining) owners[c.headLine] = suspect
   }
 
   for (let i = 0; i < owners.length; i++) {
     if (owners[i] === null) owners[i] = headOid
   }
-
   return owners as string[]
 }
