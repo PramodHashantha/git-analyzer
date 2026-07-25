@@ -7,6 +7,7 @@ import { ActivityOverTimeChart } from './components/Dashboard/ActivityOverTimeCh
 import { CommitPatternsHeatmap } from './components/Dashboard/CommitPatternsHeatmap'
 import { OwnershipView } from './components/Dashboard/OwnershipView'
 import { MergeInsightsTable } from './components/Dashboard/MergeInsightsTable'
+import { HotspotsTable } from './components/Dashboard/HotspotsTable'
 import { BranchSelector } from './components/BranchSelector'
 import { DateRangeFilter } from './components/DateRangeFilter'
 import { AuthorFilter } from './components/AuthorFilter'
@@ -19,6 +20,7 @@ import {
   type DateRange,
 } from './lib/filters'
 import { aggregateAuthorTotals, aggregateCommitPatterns } from '../shared/aggregate-churn'
+import { aggregateHotspots } from '../shared/aggregate-hotspots'
 
 export default function App() {
   const [repoPath, setRepoPath] = useState<string | null>(null)
@@ -39,6 +41,7 @@ export default function App() {
         dateRange
       ),
       commitPatterns: aggregateCommitPatterns(authorAndDateFilteredStats),
+      hotspots: aggregateHotspots(authorAndDateFilteredStats),
     }
   }, [analysis, selectedAuthors, dateRange])
 
@@ -81,6 +84,7 @@ export default function App() {
           <ActivityOverTimeChart activity={filtered.activity} />
           <CommitPatternsHeatmap patterns={filtered.commitPatterns} />
           <MergeInsightsTable mergeInsights={analysis.mergeInsights} />
+          <HotspotsTable hotspots={filtered.hotspots} />
           <OwnershipView
             authorOwnership={analysis.authorOwnership}
             fileOwnership={analysis.fileOwnership}

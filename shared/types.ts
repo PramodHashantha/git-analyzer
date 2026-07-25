@@ -69,6 +69,13 @@ export interface BranchUpstreamStatus {
   behind: number
 }
 
+export interface HotspotEntry {
+  filepath: string
+  totalChurn: number
+  authorCount: number
+  score: number
+}
+
 export interface RepoAnalysis {
   repoName: string
   branch: string
