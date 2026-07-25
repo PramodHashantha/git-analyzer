@@ -16,7 +16,7 @@ export function StatusPanel({ status }: { status: AnalysisStatus }) {
     case 'computing-ownership':
       return (
         <p>
-          Computing current ownership: {status.done} / {status.total} files
+          Computing current ownership: {status.done} / {status.total} commits
         </p>
       )
     case 'error':

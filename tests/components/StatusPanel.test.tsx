@@ -10,6 +10,12 @@ describe('StatusPanel', () => {
     expect(screen.getByText(/3 \/ 10 commits/i)).toBeInTheDocument()
   })
 
+  it('labels ownership progress by commits, not files', () => {
+    const status: AnalysisStatus = { phase: 'computing-ownership', done: 4, total: 9 }
+    render(<StatusPanel status={status} />)
+    expect(screen.getByText(/4 \/ 9 commits/i)).toBeInTheDocument()
+  })
+
   it('shows the error message on failure', () => {
     const status: AnalysisStatus = { phase: 'error', message: 'No .git directory found' }
     render(<StatusPanel status={status} />)
