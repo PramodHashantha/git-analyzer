@@ -4,6 +4,9 @@ import { linesToText } from '../../../src/lib/git/line-text'
 import { buildFixtureRepo } from '../../fixtures/gitFixture'
 import { makeRepoContext } from '../../../src/lib/git/repo'
 import { walkHistory } from '../../../src/lib/git/history'
+import { blameFile } from '../../../src/lib/git/blame'
+import * as git from 'isomorphic-git'
+import type { FixtureCommit } from '../../fixtures/gitFixture'
 
 const owners = (before: string[], beforeOwners: string[], after: string[], oid: string) =>
   applyChangeToOwners(beforeOwners, linesToText(before), linesToText(after), oid)
@@ -74,6 +77,53 @@ describe('computeAllOwnership', () => {
     expect(progress).toEqual([
       { done: 1, total: 2 },
       { done: 2, total: 2 },
+    ])
+  })
+})
+
+async function assertParity(name: string, commits: FixtureCommit[]) {
+  const { fs, dir, gitdir, headOid } = await buildFixtureRepo(name, commits)
+  const ctx = makeRepoContext(fs, dir)
+
+  const owners = await computeAllOwnership(ctx, headOid)
+  const filesAtHead = await git.listFiles({ fs, dir, gitdir, ref: headOid })
+
+  // Same set of files.
+  expect([...owners.keys()].sort()).toEqual([...filesAtHead].sort())
+
+  // Same per-line owners as the backward blame oracle, for every file.
+  for (const filepath of filesAtHead) {
+    const expected = await blameFile(ctx, headOid, filepath)
+    expect(owners.get(filepath), `owners mismatch for ${filepath}`).toEqual(expected)
+  }
+}
+
+describe('computeAllOwnership parity with blameFile', () => {
+  it('matches on linear history with edits, a survivor line, and no trailing newline', async () => {
+    await assertParity('parity-linear', [
+      {
+        message: 'c1',
+        author: { name: 'Alice', email: 'a@x.com' },
+        files: { 'keep.txt': 'root line\n', 'edit.txt': 'a\nb\nc\n', 'nonl.txt': 'x\ny' },
+      },
+      {
+        message: 'c2',
+        author: { name: 'Bob', email: 'b@x.com' },
+        files: { 'edit.txt': 'a\nB\nc\nd\n' },
+      },
+      {
+        message: 'c3',
+        author: { name: 'Carol', email: 'c@x.com' },
+        files: { 'nonl.txt': 'x\ny\nz' },
+      },
+    ])
+  })
+
+  it('matches when a file is deleted then re-added', async () => {
+    await assertParity('parity-readd', [
+      { message: 'c1', author: { name: 'A', email: 'a@x.com' }, files: { 'f.txt': 'one\ntwo\n' } },
+      { message: 'c2', author: { name: 'B', email: 'b@x.com' }, files: { 'f.txt': null } },
+      { message: 'c3', author: { name: 'C', email: 'c@x.com' }, files: { 'f.txt': 'fresh\n' } },
     ])
   })
 })
