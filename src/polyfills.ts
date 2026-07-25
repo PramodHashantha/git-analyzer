@@ -1,11 +1,9 @@
 import { Buffer } from 'buffer'
 
-declare global {
-  // eslint-disable-next-line no-var
-  var Buffer: typeof import('buffer').Buffer
-}
-
-type BufferHost = { Buffer?: typeof Buffer }
+// Buffer's global type comes from @types/node; the host is typed loosely so the
+// `buffer` package's Buffer assigns cleanly regardless of minor type drift
+// between the two.
+type BufferHost = { Buffer?: unknown }
 
 /**
  * isomorphic-git's browser build calls `Buffer.from()` on every *binary* read
