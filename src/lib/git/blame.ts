@@ -1,8 +1,7 @@
 import * as git from 'isomorphic-git'
 import { diffLines } from 'diff'
 import type { RepoContext } from './repo'
-
-const decoder = new TextDecoder('utf-8', { fatal: false })
+import { decodeLines, linesToText } from './line-text'
 
 async function readFileLinesAtCommit(
   ctx: RepoContext,
@@ -13,11 +12,7 @@ async function readFileLinesAtCommit(
     const { blob } = await git.readBlob({
       fs: ctx.fs, dir: ctx.dir, gitdir: ctx.gitdir, oid: commitOid, filepath, cache: ctx.cache,
     })
-    const text = decoder.decode(blob)
-    if (!text.length) return []
-    const lines = text.split('\n')
-    // Remove trailing empty line if text ends with newline
-    return lines[lines.length - 1] === '' ? lines.slice(0, -1) : lines
+    return decodeLines(blob)
   } catch {
     return []
   }
@@ -40,8 +35,8 @@ export async function blameFile(
     const parentOid = commit.commit.parent[0] ?? null
     const parentLines = parentOid ? await readFileLinesAtCommit(ctx, parentOid, filepath) : []
 
-    const parentText = parentLines.length ? parentLines.join('\n') + '\n' : ''
-    const currentText = currentLines.length ? currentLines.join('\n') + '\n' : ''
+    const parentText = linesToText(parentLines)
+    const currentText = linesToText(currentLines)
     const parts = diffLines(parentText, currentText)
 
     const addedAtCurIdx = new Set<number>()
