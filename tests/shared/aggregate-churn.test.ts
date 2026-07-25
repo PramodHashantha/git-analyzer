@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import type { CommitStats, CommitInfo } from '../../../src/lib/types'
+import type { CommitStats, CommitInfo } from '../../shared/types'
 import {
   aggregateAuthorTotals,
   aggregateActivityOverTime,
   aggregateCommitPatterns,
   filterNonMergeCommits,
-} from '../../../src/lib/git/aggregate-churn'
+} from '../../shared/aggregate-churn'
 
 function makeStat(overrides: Partial<CommitStats['commit']> & { totalAdded: number; totalDeleted: number }): CommitStats {
   return {

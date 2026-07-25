@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import type { CommitInfo } from '../../../src/lib/types'
-import { aggregateMergeInsights } from '../../../src/lib/git/aggregate-merges'
+import type { CommitInfo } from '../../shared/types'
+import { aggregateMergeInsights } from '../../shared/aggregate-merges'
 
 function makeCommit(overrides: Partial<CommitInfo>): CommitInfo {
   return {

@@ -1,4 +1,4 @@
-import type { BranchMergeInsights } from '../../lib/types'
+import type { BranchMergeInsights } from '../../../shared/types'
 
 export function MergeInsightsTable({ mergeInsights }: { mergeInsights: BranchMergeInsights[] }) {
   if (mergeInsights.length === 0) return null

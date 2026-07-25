@@ -1,6 +1,6 @@
 import { render, screen, fireEvent, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
-import type { FileOwnership } from '../../../src/lib/types'
+import type { FileOwnership } from '../../../shared/types'
 import { OwnershipView } from '../../../src/components/Dashboard/OwnershipView'
 
 describe('OwnershipView', () => {

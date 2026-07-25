@@ -1,4 +1,4 @@
-import type { CommitPatternSummary } from '../../lib/types'
+import type { CommitPatternSummary } from '../../../shared/types'
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 

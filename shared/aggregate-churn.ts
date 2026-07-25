@@ -1,5 +1,5 @@
 import { startOfWeek, startOfMonth } from 'date-fns'
-import type { AuthorTotals, ActivityBucket, CommitPatternSummary, CommitStats, CommitInfo } from '../types'
+import type { AuthorTotals, ActivityBucket, CommitPatternSummary, CommitStats, CommitInfo } from './types'
 
 /**
  * Merge commits combine branches rather than authoring code; git's own

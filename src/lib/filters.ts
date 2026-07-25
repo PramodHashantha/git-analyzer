@@ -1,4 +1,4 @@
-import type { ActivityBucket, CommitStats } from './types'
+import type { ActivityBucket, CommitStats } from '../../shared/types'
 
 export function filterByAuthors<T extends { author: string }>(
   items: T[],

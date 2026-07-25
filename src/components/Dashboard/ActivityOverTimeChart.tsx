@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts'
-import type { ActivityBucket } from '../../lib/types'
+import type { ActivityBucket } from '../../../shared/types'
 
 const COLORS = ['#2563eb', '#16a34a', '#dc2626', '#9333ea', '#ea580c']
 

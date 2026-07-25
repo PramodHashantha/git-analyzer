@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isBinaryBlob } from '../../../src/lib/git/binary'
+import { isBinaryBlob } from '../../shared/binary'
 
 const enc = (s: string) => new TextEncoder().encode(s)
 

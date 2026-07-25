@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { AuthorOwnership, FileOwnership } from '../../lib/types'
+import type { AuthorOwnership, FileOwnership } from '../../../shared/types'
 import { rollupByDirectory } from '../../lib/directory-rollup'
 
 export function OwnershipView({

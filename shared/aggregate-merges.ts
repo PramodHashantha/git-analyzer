@@ -1,4 +1,4 @@
-import type { CommitInfo, BranchMergeInsights } from '../types'
+import type { CommitInfo, BranchMergeInsights } from './types'
 
 export function aggregateMergeInsights(commits: CommitInfo[]): BranchMergeInsights[] {
   const byAuthor = new Map<string, number>()

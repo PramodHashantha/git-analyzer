@@ -1,5 +1,5 @@
 import { openDB, type IDBPDatabase } from 'idb'
-import type { RepoAnalysis } from '../types'
+import type { RepoAnalysis } from '../../../shared/types'
 
 const DB_NAME = 'git-analyser'
 const STORE_NAME = 'repo-analysis'

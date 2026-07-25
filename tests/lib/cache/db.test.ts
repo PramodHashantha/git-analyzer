@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { makeCacheKey, getCachedAnalysis, setCachedAnalysis } from '../../../src/lib/cache/db'
-import type { RepoAnalysis } from '../../../src/lib/types'
+import type { RepoAnalysis } from '../../../shared/types'
 
 function makeAnalysis(overrides: Partial<RepoAnalysis> = {}): RepoAnalysis {
   return {
