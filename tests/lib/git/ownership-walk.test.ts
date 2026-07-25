@@ -5,6 +5,7 @@ import { buildFixtureRepo } from '../../fixtures/gitFixture'
 import { makeRepoContext } from '../../../src/lib/git/repo'
 import { walkHistory } from '../../../src/lib/git/history'
 import { blameFile } from '../../../src/lib/git/blame'
+import { isBinaryBlob } from '../../../src/lib/git/binary'
 import * as git from 'isomorphic-git'
 import type { FixtureCommit } from '../../fixtures/gitFixture'
 
@@ -42,6 +43,25 @@ describe('applyChangeToOwners', () => {
 })
 
 describe('computeAllOwnership', () => {
+  it('excludes binary files from ownership', async () => {
+    const { fs, dir, headOid } = await buildFixtureRepo('own-walk-binary', [
+      {
+        message: 'add text + binary',
+        author: { name: 'Alice', email: 'alice@example.com' },
+        files: {
+          'code.txt': 'line one\nline two\n',
+          // a NUL byte makes this blob "binary"
+          'image.bin': 'PNG\0data here',
+        },
+      },
+    ])
+    const ctx = makeRepoContext(fs, dir)
+    const owners = await computeAllOwnership(ctx, headOid)
+
+    expect(owners.has('code.txt')).toBe(true)
+    expect(owners.has('image.bin')).toBe(false)
+  })
+
   it('maps each HEAD line to the commit that introduced it', async () => {
     const { fs, dir, headOid } = await buildFixtureRepo('own-walk-1', [
       {
@@ -88,11 +108,18 @@ async function assertParity(name: string, commits: FixtureCommit[]) {
   const owners = await computeAllOwnership(ctx, headOid)
   const filesAtHead = await git.listFiles({ fs, dir, gitdir, ref: headOid })
 
-  // Same set of files.
-  expect([...owners.keys()].sort()).toEqual([...filesAtHead].sort())
-
-  // Same per-line owners as the backward blame oracle, for every file.
+  // Filter to text files only (binary files are excluded from ownership)
+  const textFiles: string[] = []
   for (const filepath of filesAtHead) {
+    const { blob } = await git.readBlob({ fs, dir, gitdir, oid: headOid, filepath })
+    if (!isBinaryBlob(blob)) textFiles.push(filepath)
+  }
+
+  // Same set of files (text files only).
+  expect([...owners.keys()].sort()).toEqual([...textFiles].sort())
+
+  // Same per-line owners as the backward blame oracle, for every text file.
+  for (const filepath of textFiles) {
     const expected = await blameFile(ctx, headOid, filepath)
     expect(owners.get(filepath), `owners mismatch for ${filepath}`).toEqual(expected)
   }

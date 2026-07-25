@@ -3,16 +3,13 @@ import type { CommitInfo, CommitStats, FileLineStats } from '../types'
 import type { RepoContext } from './repo'
 import { listChangedFiles, countLineChanges } from './line-diff'
 import { mapWithConcurrency, GIT_READ_CONCURRENCY } from '../concurrency'
+import { isBinaryBlob } from './binary'
 
 const decoder = new TextDecoder('utf-8', { fatal: false })
 
-async function readBlobText(ctx: RepoContext, oid: string): Promise<string> {
+async function readBlob(ctx: RepoContext, oid: string): Promise<Uint8Array> {
   const { blob } = await git.readBlob({ fs: ctx.fs, dir: ctx.dir, gitdir: ctx.gitdir, oid, cache: ctx.cache })
-  return decoder.decode(blob)
-}
-
-function isBinary(text: string): boolean {
-  return text.includes(String.fromCharCode(0))
+  return blob
 }
 
 /**
@@ -26,10 +23,12 @@ export async function computeCommitStats(ctx: RepoContext, commit: CommitInfo): 
 
   const files: FileLineStats[] = []
   for (const change of changedFiles) {
-    const beforeText = change.beforeOid ? await readBlobText(ctx, change.beforeOid) : ''
-    const afterText = change.afterOid ? await readBlobText(ctx, change.afterOid) : ''
-    if (isBinary(beforeText) || isBinary(afterText)) continue
+    const beforeBlob = change.beforeOid ? await readBlob(ctx, change.beforeOid) : new Uint8Array()
+    const afterBlob = change.afterOid ? await readBlob(ctx, change.afterOid) : new Uint8Array()
+    if (isBinaryBlob(beforeBlob) || isBinaryBlob(afterBlob)) continue
 
+    const beforeText = decoder.decode(beforeBlob)
+    const afterText = decoder.decode(afterBlob)
     const { added, deleted } = countLineChanges(beforeText, afterText)
     files.push({ filepath: change.filepath, added, deleted })
   }

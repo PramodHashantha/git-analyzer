@@ -4,6 +4,7 @@ import type { RepoContext } from './repo'
 import { listChangedFiles } from './line-diff'
 import { decodeLines, linesToText } from './line-text'
 import { mapWithConcurrency, GIT_READ_CONCURRENCY } from '../concurrency'
+import { isBinaryBlob } from './binary'
 
 /**
  * Given the owner commit-oid of each line of a file's parent version, and the
@@ -39,10 +40,15 @@ export function applyChangeToOwners(
   return afterOwners
 }
 
-async function readBlobLines(ctx: RepoContext, oid: string): Promise<string[]> {
+async function readBlob(ctx: RepoContext, oid: string): Promise<Uint8Array> {
   const { blob } = await git.readBlob({
     fs: ctx.fs, dir: ctx.dir, gitdir: ctx.gitdir, oid, cache: ctx.cache,
   })
+  return blob
+}
+
+async function readBlobLines(ctx: RepoContext, oid: string): Promise<string[]> {
+  const blob = await readBlob(ctx, oid)
   return decodeLines(blob)
 }
 
@@ -80,12 +86,18 @@ export async function computeAllOwnership(
         state.delete(change.filepath)
         return
       }
-      const afterLines = await readBlobLines(ctx, change.afterOid)
+      const afterBlob = await readBlob(ctx, change.afterOid)
+      if (isBinaryBlob(afterBlob)) {
+        state.delete(change.filepath)
+        return
+      }
+      const afterLines = decodeLines(afterBlob)
       if (change.beforeOid === null) {
         state.set(change.filepath, afterLines.map(() => commitOid))
         return
       }
-      const beforeLines = await readBlobLines(ctx, change.beforeOid)
+      const beforeBlob = await readBlob(ctx, change.beforeOid)
+      const beforeLines = decodeLines(beforeBlob)
       const beforeOwners = state.get(change.filepath)
       if (!beforeOwners || beforeOwners.length !== beforeLines.length) {
         throw new Error(
