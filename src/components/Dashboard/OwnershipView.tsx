@@ -55,6 +55,22 @@ export function OwnershipView({
       </table>
 
       <h3 className="mb-2 text-sm font-semibold">Files (click to see owners)</h3>
+
+      {selected && (
+        <div data-testid="file-owner-detail" className="mb-4 rounded border p-3">
+          <p className="mb-2 font-medium">{selected.filepath}</p>
+          <ul className="text-sm">
+            {Object.entries(selected.ownerLineCounts)
+              .sort((a, b) => b[1] - a[1])
+              .map(([author, count]) => (
+                <li key={author}>
+                  {author}: {count} lines
+                </li>
+              ))}
+          </ul>
+        </div>
+      )}
+
       <table className="w-full text-left text-sm">
         <thead>
           <tr>
@@ -78,21 +94,6 @@ export function OwnershipView({
             ))}
         </tbody>
       </table>
-
-      {selected && (
-        <div className="mt-4 rounded border p-3">
-          <p className="mb-2 font-medium">{selected.filepath}</p>
-          <ul className="text-sm">
-            {Object.entries(selected.ownerLineCounts)
-              .sort((a, b) => b[1] - a[1])
-              .map(([author, count]) => (
-                <li key={author}>
-                  {author}: {count} lines
-                </li>
-              ))}
-          </ul>
-        </div>
-      )}
     </section>
   )
 }
