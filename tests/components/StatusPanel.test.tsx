@@ -10,10 +10,10 @@ describe('StatusPanel', () => {
     expect(screen.getByText(/3 \/ 10 commits/i)).toBeInTheDocument()
   })
 
-  it('labels ownership progress by commits, not files', () => {
+  it('labels ownership progress by files, not commits', () => {
     const status: AnalysisStatus = { phase: 'computing-ownership', done: 4, total: 9 }
     render(<StatusPanel status={status} />)
-    expect(screen.getByText(/4 \/ 9 commits/i)).toBeInTheDocument()
+    expect(screen.getByText(/4 \/ 9 files/i)).toBeInTheDocument()
   })
 
   it('shows the error message on failure', () => {
