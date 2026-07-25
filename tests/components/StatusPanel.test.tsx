@@ -20,4 +20,9 @@ describe('StatusPanel', () => {
     const { container: idle } = render(<StatusPanel status={{ phase: 'idle' }} />)
     expect(idle).toBeEmptyDOMElement()
   })
+
+  it('shows a progress bar while loading', () => {
+    render(<StatusPanel status={{ phase: 'loading' }} />)
+    expect(screen.getByRole('status')).toBeInTheDocument()
+  })
 })
