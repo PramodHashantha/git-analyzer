@@ -14,13 +14,16 @@ import { DateRangeFilter } from './components/DateRangeFilter'
 import { AuthorFilter } from './components/AuthorFilter'
 import { useRepoAnalysis } from './hooks/useRepoAnalysis'
 import {
-  filterByAuthors,
-  filterActivityByDateRange,
   filterCommitStatsByDateRange,
   filterCommitStatsByAuthors,
   type DateRange,
 } from './lib/filters'
-import { aggregateAuthorTotals, aggregateCommitPatterns } from '../shared/aggregate-churn'
+import {
+  aggregateAuthorTotals,
+  aggregateCommitPatterns,
+  aggregateActivityOverTime,
+  type BucketGranularity,
+} from '../shared/aggregate-churn'
 import { aggregateHotspots } from '../shared/aggregate-hotspots'
 import { aggregateBusFactor } from '../shared/aggregate-bus-factor'
 
@@ -28,6 +31,7 @@ export default function App() {
   const [repoPath, setRepoPath] = useState<string | null>(null)
   const [dateRange, setDateRange] = useState<DateRange>({ start: null, end: null })
   const [selectedAuthors, setSelectedAuthors] = useState<string[]>([])
+  const [granularity, setGranularity] = useState<BucketGranularity>('month')
   const { status, analyze } = useRepoAnalysis()
 
   const analysis = status.phase === 'done' ? status.analysis : null
@@ -38,14 +42,11 @@ export default function App() {
     const authorAndDateFilteredStats = filterCommitStatsByAuthors(dateFilteredStats, selectedAuthors)
     return {
       authorTotals: aggregateAuthorTotals(authorAndDateFilteredStats),
-      activity: filterActivityByDateRange(
-        filterByAuthors(analysis.activity, selectedAuthors),
-        dateRange
-      ),
+      activity: aggregateActivityOverTime(authorAndDateFilteredStats, granularity),
       commitPatterns: aggregateCommitPatterns(authorAndDateFilteredStats),
       hotspots: aggregateHotspots(authorAndDateFilteredStats),
     }
-  }, [analysis, selectedAuthors, dateRange])
+  }, [analysis, selectedAuthors, dateRange, granularity])
 
   const busFactor = useMemo(() => {
     if (!analysis) return null
@@ -88,7 +89,11 @@ export default function App() {
             onChange={setSelectedAuthors}
           />
           <OverviewTable authorTotals={filtered.authorTotals} />
-          <ActivityOverTimeChart activity={filtered.activity} />
+          <ActivityOverTimeChart
+            activity={filtered.activity}
+            granularity={granularity}
+            onGranularityChange={setGranularity}
+          />
           <CommitPatternsHeatmap patterns={filtered.commitPatterns} />
           <MergeInsightsTable mergeInsights={analysis.mergeInsights} />
           <HotspotsTable hotspots={filtered.hotspots} />

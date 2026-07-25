@@ -1,10 +1,19 @@
 import { useMemo } from 'react'
 import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import type { ActivityBucket } from '../../../shared/types'
+import type { BucketGranularity } from '../../../shared/aggregate-churn'
 
 const COLORS = ['#2563eb', '#16a34a', '#dc2626', '#9333ea', '#ea580c']
 
-export function ActivityOverTimeChart({ activity }: { activity: ActivityBucket[] }) {
+export function ActivityOverTimeChart({
+  activity,
+  granularity,
+  onGranularityChange,
+}: {
+  activity: ActivityBucket[]
+  granularity: BucketGranularity
+  onGranularityChange: (granularity: BucketGranularity) => void
+}) {
   const { rows, authors } = useMemo(() => {
     const byBucket = new Map<number, Record<string, number>>()
     const authorSet = new Set<string>()
@@ -24,7 +33,25 @@ export function ActivityOverTimeChart({ activity }: { activity: ActivityBucket[]
 
   return (
     <section className="rounded bg-white p-4 shadow">
-      <h2 className="mb-4 text-lg font-semibold">Activity over time</h2>
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="text-lg font-semibold">Activity over time</h2>
+        <div className="flex gap-1 text-sm">
+          <button
+            type="button"
+            onClick={() => onGranularityChange('week')}
+            className={`rounded px-2 py-1 ${granularity === 'week' ? 'bg-blue-600 text-white' : 'bg-gray-100'}`}
+          >
+            Week
+          </button>
+          <button
+            type="button"
+            onClick={() => onGranularityChange('month')}
+            className={`rounded px-2 py-1 ${granularity === 'month' ? 'bg-blue-600 text-white' : 'bg-gray-100'}`}
+          >
+            Month
+          </button>
+        </div>
+      </div>
       <div className="h-64">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={rows}>
