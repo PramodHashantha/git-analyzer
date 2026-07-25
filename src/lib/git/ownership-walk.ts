@@ -47,11 +47,6 @@ async function readBlob(ctx: RepoContext, oid: string): Promise<Uint8Array> {
   return blob
 }
 
-async function readBlobLines(ctx: RepoContext, oid: string): Promise<string[]> {
-  const blob = await readBlob(ctx, oid)
-  return decodeLines(blob)
-}
-
 /** First-parent chain from the root commit up to headOid (oldest first). */
 async function firstParentChain(ctx: RepoContext, headOid: string): Promise<string[]> {
   const chain: string[] = []
