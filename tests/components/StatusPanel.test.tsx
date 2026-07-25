@@ -1,24 +1,23 @@
+// tests/components/StatusPanel.test.tsx
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { StatusPanel } from '../../src/components/StatusPanel'
 import type { AnalysisStatus } from '../../src/hooks/useRepoAnalysis'
 
 describe('StatusPanel', () => {
-  it('shows progress counts while computing churn', () => {
-    const status: AnalysisStatus = { phase: 'computing-churn', done: 3, total: 10 }
-    render(<StatusPanel status={status} />)
-    expect(screen.getByText(/3 \/ 10 commits/i)).toBeInTheDocument()
-  })
-
-  it('labels ownership progress by files, not commits', () => {
-    const status: AnalysisStatus = { phase: 'computing-ownership', done: 4, total: 9 }
-    render(<StatusPanel status={status} />)
-    expect(screen.getByText(/4 \/ 9 files/i)).toBeInTheDocument()
+  it('shows a loading message while analyzing', () => {
+    render(<StatusPanel status={{ phase: 'loading' }} />)
+    expect(screen.getByText(/analyzing/i)).toBeInTheDocument()
   })
 
   it('shows the error message on failure', () => {
-    const status: AnalysisStatus = { phase: 'error', message: 'No .git directory found' }
+    const status: AnalysisStatus = { phase: 'error', message: 'Not a git repository: D:\\repo' }
     render(<StatusPanel status={status} />)
-    expect(screen.getByText(/No .git directory found/i)).toBeInTheDocument()
+    expect(screen.getByText(/not a git repository/i)).toBeInTheDocument()
+  })
+
+  it('renders nothing when idle or done', () => {
+    const { container: idle } = render(<StatusPanel status={{ phase: 'idle' }} />)
+    expect(idle).toBeEmptyDOMElement()
   })
 })

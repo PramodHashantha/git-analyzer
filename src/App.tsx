@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react'
-import { FolderPicker } from './components/FolderPicker'
-import { UnsupportedBrowserNotice } from './components/UnsupportedBrowserNotice'
+import { RepoPicker } from './components/RepoPicker'
 import { StatusPanel } from './components/StatusPanel'
 import { OverviewTable } from './components/Dashboard/OverviewTable'
 import { ActivityOverTimeChart } from './components/Dashboard/ActivityOverTimeChart'
@@ -10,7 +9,6 @@ import { MergeInsightsTable } from './components/Dashboard/MergeInsightsTable'
 import { BranchSelector } from './components/BranchSelector'
 import { DateRangeFilter } from './components/DateRangeFilter'
 import { AuthorFilter } from './components/AuthorFilter'
-import { isFileSystemAccessSupported } from './lib/browser-support'
 import { useRepoAnalysis } from './hooks/useRepoAnalysis'
 import {
   filterByAuthors,
@@ -19,10 +17,10 @@ import {
   filterCommitStatsByAuthors,
   type DateRange,
 } from './lib/filters'
-import { aggregateAuthorTotals, aggregateCommitPatterns } from './lib/git/aggregate-churn'
+import { aggregateAuthorTotals, aggregateCommitPatterns } from '../shared/aggregate-churn'
 
 export default function App() {
-  const [root, setRoot] = useState<FileSystemDirectoryHandle | null>(null)
+  const [repoPath, setRepoPath] = useState<string | null>(null)
   const [dateRange, setDateRange] = useState<DateRange>({ start: null, end: null })
   const [selectedAuthors, setSelectedAuthors] = useState<string[]>([])
   const { status, analyze } = useRepoAnalysis()
@@ -32,10 +30,7 @@ export default function App() {
   const filtered = useMemo(() => {
     if (!analysis) return null
     const dateFilteredStats = filterCommitStatsByDateRange(analysis.commitStats, dateRange)
-    const authorAndDateFilteredStats = filterCommitStatsByAuthors(
-      dateFilteredStats,
-      selectedAuthors
-    )
+    const authorAndDateFilteredStats = filterCommitStatsByAuthors(dateFilteredStats, selectedAuthors)
     return {
       authorTotals: aggregateAuthorTotals(authorAndDateFilteredStats),
       activity: filterActivityByDateRange(
@@ -46,50 +41,27 @@ export default function App() {
     }
   }, [analysis, selectedAuthors, dateRange])
 
-  if (!isFileSystemAccessSupported()) {
-    return (
-      <main className="min-h-screen bg-gray-50 p-8">
-        <UnsupportedBrowserNotice />
-      </main>
-    )
-  }
-
-  const handleFolderSelected = async (handle: FileSystemDirectoryHandle) => {
-    setRoot(handle)
+  const handleRepoSelected = async (path: string) => {
+    setRepoPath(path)
     setSelectedAuthors([])
     setDateRange({ start: null, end: null })
-    await analyze(handle)
+    await analyze(path)
   }
 
   const handleBranchChange = async (branch: string) => {
-    if (root) await analyze(root, branch)
-  }
-
-  const handleGrantAccessAgain = async () => {
-    if (!root) return
-    await root.requestPermission({ mode: 'read' })
-    await analyze(root)
+    if (repoPath) await analyze(repoPath, branch)
   }
 
   return (
     <main className="min-h-screen bg-gray-50 p-8">
       <h1 className="mb-6 text-2xl font-bold">Git Contribution Dashboard</h1>
-      {!root && <FolderPicker onFolderSelected={handleFolderSelected} />}
 
-      {root && !analysis && <StatusPanel status={status} />}
+      <RepoPicker onSelect={handleRepoSelected} />
 
-      {root && status.phase === 'error' && status.permissionDenied && (
-        <button
-          type="button"
-          onClick={handleGrantAccessAgain}
-          className="mt-2 rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
-        >
-          Grant access again
-        </button>
-      )}
+      {repoPath && !analysis && <StatusPanel status={status} />}
 
-      {root && analysis && filtered && (
-        <div className="space-y-6">
+      {repoPath && analysis && filtered && (
+        <div className="mt-6 space-y-6">
           <div className="flex flex-wrap items-center gap-4 rounded bg-white p-4 shadow">
             <BranchSelector
               branches={analysis.branches}

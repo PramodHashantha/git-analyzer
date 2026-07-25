@@ -4,8 +4,7 @@ import App from '../src/App'
 
 describe('App', () => {
   it('renders the dashboard heading', () => {
-    // Mock the File System Access API
-    window.showDirectoryPicker = vi.fn()
+    vi.stubGlobal('fetch', vi.fn())
     render(<App />)
     expect(screen.getByText('Git Contribution Dashboard')).toBeInTheDocument()
   })
