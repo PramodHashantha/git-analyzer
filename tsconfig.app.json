@@ -14,5 +14,5 @@
     "strict": true,
     "types": ["@types/wicg-file-system-access", "vite/client", "node"]
   },
-  "include": ["src", "tests"]
+  "include": ["src", "tests", "shared"]
 }
