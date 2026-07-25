@@ -38,10 +38,15 @@ describe('aggregateOwnership', () => {
     expect(bob?.percentage).toBeCloseTo(25)
   })
 
-  it('reports progress across commits', async () => {
+  it('reports progress once per text file (not per commit)', async () => {
+    // One commit, two files: per-file progress is [1/2, 2/2]; a per-commit
+    // scheme would report [1/1], so this fixture discriminates the two.
     const { fs, dir, headOid } = await buildFixtureRepo('aggregate-ownership-progress', [
-      { message: 'c1', author: { name: 'Alice', email: 'alice@example.com' }, files: { 'a.txt': 'x\n' } },
-      { message: 'c2', author: { name: 'Alice', email: 'alice@example.com' }, files: { 'b.txt': 'y\n' } },
+      {
+        message: 'c1',
+        author: { name: 'Alice', email: 'alice@example.com' },
+        files: { 'a.txt': 'x\n', 'b.txt': 'y\n' },
+      },
     ])
     const ctx = makeRepoContext(fs, dir)
 
@@ -52,6 +57,24 @@ describe('aggregateOwnership', () => {
       { done: 1, total: 2 },
       { done: 2, total: 2 },
     ])
+  })
+
+  it('excludes binary files from ownership', async () => {
+    // A NUL byte (built at runtime to keep this source file pure ASCII) marks
+    // image.bin as binary, so it must be excluded from ownership.
+    const binaryContent = 'PNG' + String.fromCharCode(0) + 'data'
+    const { fs, dir, headOid } = await buildFixtureRepo('aggregate-ownership-binary', [
+      {
+        message: 'text + binary',
+        author: { name: 'Alice', email: 'alice@example.com' },
+        files: { 'code.txt': 'a\nb\n', 'image.bin': binaryContent },
+      },
+    ])
+    const ctx = makeRepoContext(fs, dir)
+    const { files } = await aggregateOwnership(ctx, headOid)
+
+    expect(files.some((f) => f.filepath === 'code.txt')).toBe(true)
+    expect(files.some((f) => f.filepath === 'image.bin')).toBe(false)
   })
 
   it('applies an identity resolver to owner author names', async () => {
