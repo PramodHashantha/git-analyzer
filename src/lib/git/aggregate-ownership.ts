@@ -2,11 +2,13 @@ import * as git from 'isomorphic-git'
 import type { FileOwnership, AuthorOwnership } from '../types'
 import type { RepoContext } from './repo'
 import { computeAllOwnership } from './ownership-walk'
+import type { IdentityResolver } from './identity'
 
 export async function aggregateOwnership(
   ctx: RepoContext,
   headOid: string,
-  onProgress?: (done: number, total: number) => void
+  onProgress?: (done: number, total: number) => void,
+  resolver?: IdentityResolver
 ): Promise<{ files: FileOwnership[]; authors: AuthorOwnership[] }> {
   const ownersByFile = await computeAllOwnership(ctx, headOid, onProgress)
 
@@ -25,7 +27,8 @@ export async function aggregateOwnership(
         const { commit } = await git.readCommit({
           fs: ctx.fs, dir: ctx.dir, gitdir: ctx.gitdir, oid, cache: ctx.cache,
         })
-        author = commit.author.name
+        const rawName = commit.author.name
+        author = resolver ? resolver.resolve(rawName, commit.author.email) : rawName
         authorNameCache.set(oid, author)
       }
       ownerLineCounts[author] = (ownerLineCounts[author] ?? 0) + 1

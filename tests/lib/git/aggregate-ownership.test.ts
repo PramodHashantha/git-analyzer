@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { buildFixtureRepo } from '../../fixtures/gitFixture'
 import { makeRepoContext } from '../../../src/lib/git/repo'
+import { walkHistory } from '../../../src/lib/git/history'
 import { aggregateOwnership } from '../../../src/lib/git/aggregate-ownership'
+import { buildIdentityResolver } from '../../../src/lib/git/identity'
 
 describe('aggregateOwnership', () => {
   it('rolls up per-file ownership into per-author totals and percentages', async () => {
@@ -50,5 +52,29 @@ describe('aggregateOwnership', () => {
       { done: 1, total: 2 },
       { done: 2, total: 2 },
     ])
+  })
+
+  it('applies an identity resolver to owner author names', async () => {
+    const { fs, dir, headOid } = await buildFixtureRepo('aggregate-ownership-identity', [
+      {
+        message: 'first',
+        author: { name: 'Alice', email: 'shared@x.com' },
+        files: { 'a.txt': 'one\n' },
+      },
+      {
+        message: 'second',
+        author: { name: 'Alice Alt', email: 'shared@x.com' },
+        files: { 'a.txt': 'one\ntwo\n' },
+      },
+    ])
+    const ctx = makeRepoContext(fs, dir)
+    const commits = await walkHistory(ctx, 'main')
+    const resolver = buildIdentityResolver([], commits)
+
+    const { authors } = await aggregateOwnership(ctx, headOid, undefined, resolver)
+
+    // Both commits share an email, so ownership collapses to one author.
+    expect(authors).toHaveLength(1)
+    expect(authors[0].linesOwned).toBe(2)
   })
 })

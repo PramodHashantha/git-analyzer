@@ -62,4 +62,25 @@ describe('useRepoAnalysis', () => {
 
     await waitFor(() => expect(result.current.status.phase).toBe('error'))
   })
+
+  it('unifies author identities that share an email', async () => {
+    const { fs } = await buildFixtureRepo(
+      'use-repo-analysis-identity',
+      [
+        { message: 'c1', author: { name: 'Alice', email: 'shared@x.com' }, files: { 'a.txt': 'one\n' } },
+        { message: 'c2', author: { name: 'Alice Alt', email: 'shared@x.com' }, files: { 'a.txt': 'one\ntwo\n' } },
+      ],
+      '/'
+    )
+    vi.mocked(createFsAdapter).mockReturnValue(fs as unknown as ReturnType<typeof createFsAdapter>)
+
+    const { result } = renderHook(() => useRepoAnalysis())
+    await act(async () => {
+      await result.current.analyze({ name: 'demo' } as unknown as FileSystemDirectoryHandle)
+    })
+    await waitFor(() => expect(result.current.status.phase).toBe('done'))
+
+    if (result.current.status.phase !== 'done') throw new Error('expected done')
+    expect(result.current.status.analysis.authorTotals).toHaveLength(1)
+  })
 })

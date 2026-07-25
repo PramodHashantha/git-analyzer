@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { parseMailmap, buildIdentityResolver } from '../../../src/lib/git/identity'
+import { buildFixtureRepo } from '../../fixtures/gitFixture'
+import { makeRepoContext } from '../../../src/lib/git/repo'
+import { parseMailmap, buildIdentityResolver, readMailmap } from '../../../src/lib/git/identity'
 import type { CommitInfo } from '../../../src/lib/types'
 
 function c(author: string, email: string): CommitInfo {
@@ -78,5 +80,26 @@ describe('buildIdentityResolver', () => {
   it('falls back to the raw name when the commit has no email', () => {
     const resolver = buildIdentityResolver([], [])
     expect(resolver.resolve('Nameless', '')).toBe('Nameless')
+  })
+})
+
+describe('readMailmap', () => {
+  it('reads and parses a repo-root .mailmap', async () => {
+    const { fs, dir } = await buildFixtureRepo('mailmap-1', [
+      {
+        message: 'add mailmap',
+        author: { name: 'Alice', email: 'alice@x.com' },
+        files: { '.mailmap': 'Alice A <alice@x.com> <old@x.com>\n' },
+      },
+    ])
+    const entries = await readMailmap(makeRepoContext(fs, dir))
+    expect(entries).toEqual([{ properName: 'Alice A', properEmail: 'alice@x.com', commitEmail: 'old@x.com' }])
+  })
+
+  it('returns [] when there is no .mailmap', async () => {
+    const { fs, dir } = await buildFixtureRepo('mailmap-2', [
+      { message: 'c1', author: { name: 'Alice', email: 'alice@x.com' }, files: { 'a.txt': 'x\n' } },
+    ])
+    expect(await readMailmap(makeRepoContext(fs, dir))).toEqual([])
   })
 })

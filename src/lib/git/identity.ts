@@ -1,4 +1,5 @@
 import type { CommitInfo } from '../types'
+import type { RepoContext } from './repo'
 
 export interface MailmapEntry {
   properName?: string
@@ -115,5 +116,17 @@ export function buildIdentityResolver(
       const ce = canonEmail(name, email)
       return displayName.get(ce) ?? mailmapName(ce) ?? name
     },
+  }
+}
+
+/** Read and parse the repo-root .mailmap, or [] if none exists. */
+export async function readMailmap(ctx: RepoContext): Promise<MailmapEntry[]> {
+  try {
+    const text = (await ctx.fs.promises.readFile(`${ctx.dir === '/' ? '' : ctx.dir}/.mailmap`, {
+      encoding: 'utf8',
+    })) as string
+    return parseMailmap(text)
+  } catch {
+    return []
   }
 }

@@ -17,6 +17,7 @@ import {
 } from '../lib/git/aggregate-churn'
 import { aggregateMergeInsights } from '../lib/git/aggregate-merges'
 import { aggregateOwnership } from '../lib/git/aggregate-ownership'
+import { readMailmap, buildIdentityResolver } from '../lib/git/identity'
 import { getCachedAnalysis, setCachedAnalysis, makeCacheKey } from '../lib/cache/db'
 import type { RepoAnalysis } from '../lib/types'
 
@@ -51,7 +52,9 @@ export function useRepoAnalysis() {
       }
 
       setStatus({ phase: 'walking-history' })
-      const commits = await walkHistory(ctx, branch)
+      const rawCommits = await walkHistory(ctx, branch)
+      const resolver = buildIdentityResolver(await readMailmap(ctx), rawCommits)
+      const commits = rawCommits.map((c) => ({ ...c, author: resolver.resolve(c.author, c.email) }))
       const churnCommits = filterNonMergeCommits(commits)
 
       const commitStats = await computeAllCommitStats(ctx, churnCommits, (done, total) =>
@@ -61,7 +64,8 @@ export function useRepoAnalysis() {
       const { files: fileOwnership, authors: authorOwnership } = await aggregateOwnership(
         ctx,
         headOid,
-        (done, total) => setStatus({ phase: 'computing-ownership', done, total })
+        (done, total) => setStatus({ phase: 'computing-ownership', done, total }),
+        resolver
       )
 
       const analysis: RepoAnalysis = {
