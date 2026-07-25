@@ -62,10 +62,18 @@ export interface BranchMergeInsights {
   mergeCommits: number
 }
 
+export interface BranchUpstreamStatus {
+  hasUpstream: boolean
+  upstreamName?: string
+  ahead: number
+  behind: number
+}
+
 export interface RepoAnalysis {
   repoName: string
   branch: string
   branches: string[]
+  branchStatus: BranchUpstreamStatus
   headOid: string
   commits: CommitInfo[]
   commitStats: CommitStats[]

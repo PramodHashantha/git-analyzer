@@ -1,4 +1,5 @@
 import { runGit } from './exec'
+import type { BranchUpstreamStatus } from '../../../shared/types'
 
 export class NotAGitRepoError extends Error {}
 
@@ -37,4 +38,24 @@ export async function getCurrentBranch(repoPath: string): Promise<string> {
 export async function resolveBranchHead(repoPath: string, branch: string): Promise<string> {
   const out = await runGit(repoPath, ['rev-parse', branch])
   return out.trim()
+}
+
+export async function getUpstreamStatus(repoPath: string, branch: string): Promise<BranchUpstreamStatus> {
+  let upstreamName: string
+  try {
+    const out = await runGit(repoPath, ['rev-parse', '--abbrev-ref', `${branch}@{upstream}`])
+    upstreamName = out.trim()
+  } catch {
+    return { hasUpstream: false, ahead: 0, behind: 0 }
+  }
+
+  const out = await runGit(repoPath, ['rev-list', '--left-right', '--count', `${branch}...${upstreamName}`])
+  const [aheadStr, behindStr] = out.trim().split(/\s+/)
+
+  return {
+    hasUpstream: true,
+    upstreamName,
+    ahead: Number(aheadStr),
+    behind: Number(behindStr),
+  }
 }

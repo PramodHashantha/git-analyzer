@@ -1,5 +1,5 @@
 import path from 'node:path'
-import { assertIsGitRepo, listBranches, getCurrentBranch, resolveBranchHead, InvalidBranchError } from './git/repo'
+import { assertIsGitRepo, listBranches, getCurrentBranch, resolveBranchHead, getUpstreamStatus, InvalidBranchError } from './git/repo'
 import { readHistory } from './git/history'
 import { readChurnByCommit } from './git/churn'
 import { aggregateOwnership } from './git/ownership'
@@ -56,10 +56,13 @@ export async function computeAnalysis(
     onOwnershipProgress
   )
 
+  const branchStatus = await getUpstreamStatus(repoPath, branch)
+
   return {
     repoName: path.basename(repoPath),
     branch,
     branches,
+    branchStatus,
     headOid,
     commits,
     commitStats,

@@ -22,6 +22,7 @@ describe('analyzer', () => {
     const analysis = await computeAnalysis(dir, head)
 
     expect(analysis.branch).toBe('main')
+    expect(analysis.branchStatus).toEqual({ hasUpstream: false, ahead: 0, behind: 0 })
     expect(analysis.headOid).toBe(head.headOid)
     expect(analysis.commits).toHaveLength(2)
     expect(analysis.authorTotals.find((a) => a.author === 'Alice')?.added).toBe(1)
