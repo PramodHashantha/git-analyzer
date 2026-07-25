@@ -29,7 +29,7 @@ describe('StaleBranchBanner', () => {
     )
     expect(screen.getByText(/12 commits behind/i)).toBeInTheDocument()
     expect(screen.getByText(/origin\/main/i)).toBeInTheDocument()
-    expect(screen.getByText(/git fetch origin main:main/i)).toBeInTheDocument()
+    expect(screen.getByText(/git fetch origin/i)).toBeInTheDocument()
   })
 
   it('can be dismissed', () => {

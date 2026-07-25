@@ -67,7 +67,7 @@ alongside its other reads and includes the result.
 when `analysis.branchStatus.hasUpstream && analysis.branchStatus.behind > 0`:
 
 > ⚠️ Local branch "main" is 12 commits behind origin/main — results may be
-> missing recent work. Run `git fetch origin main:main` to update.
+> missing recent work. Run `git fetch origin` to update, then re-analyze.
 
 Dismiss state is local component state (`useState`), reset whenever the
 branch or repo changes (not persisted) — reappears next time a stale branch
