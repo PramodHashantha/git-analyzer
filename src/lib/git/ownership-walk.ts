@@ -1,4 +1,9 @@
 import { diffLines } from 'diff'
+import * as git from 'isomorphic-git'
+import type { RepoContext } from './repo'
+import { listChangedFiles } from './line-diff'
+import { decodeLines, linesToText } from './line-text'
+import { mapWithConcurrency, GIT_READ_CONCURRENCY } from '../concurrency'
 
 /**
  * Given the owner commit-oid of each line of a file's parent version, and the
@@ -32,4 +37,70 @@ export function applyChangeToOwners(
   }
 
   return afterOwners
+}
+
+async function readBlobLines(ctx: RepoContext, oid: string): Promise<string[]> {
+  const { blob } = await git.readBlob({
+    fs: ctx.fs, dir: ctx.dir, gitdir: ctx.gitdir, oid, cache: ctx.cache,
+  })
+  return decodeLines(blob)
+}
+
+/** First-parent chain from the root commit up to headOid (oldest first). */
+async function firstParentChain(ctx: RepoContext, headOid: string): Promise<string[]> {
+  const chain: string[] = []
+  let oid: string | null = headOid
+  while (oid) {
+    chain.push(oid)
+    const { commit } = await git.readCommit({
+      fs: ctx.fs, dir: ctx.dir, gitdir: ctx.gitdir, oid, cache: ctx.cache,
+    })
+    oid = commit.parent[0] ?? null
+  }
+  return chain.reverse()
+}
+
+export async function computeAllOwnership(
+  ctx: RepoContext,
+  headOid: string,
+  onProgress?: (done: number, total: number) => void
+): Promise<Map<string, string[]>> {
+  const chain = await firstParentChain(ctx, headOid) // oldest -> newest
+  const state = new Map<string, string[]>()
+
+  for (let i = 0; i < chain.length; i++) {
+    const commitOid = chain[i]
+    const parentOid = i > 0 ? chain[i - 1] : null
+    const changed = await listChangedFiles(ctx, commitOid, parentOid)
+
+    // Files within one commit are independent (each path appears once), so
+    // they can be processed concurrently even though commits are sequential.
+    await mapWithConcurrency(changed, GIT_READ_CONCURRENCY, async (change) => {
+      if (change.afterOid === null) {
+        state.delete(change.filepath)
+        return
+      }
+      const afterLines = await readBlobLines(ctx, change.afterOid)
+      if (change.beforeOid === null) {
+        state.set(change.filepath, afterLines.map(() => commitOid))
+        return
+      }
+      const beforeLines = await readBlobLines(ctx, change.beforeOid)
+      const beforeOwners = state.get(change.filepath)
+      if (!beforeOwners || beforeOwners.length !== beforeLines.length) {
+        throw new Error(
+          `ownership-walk: state invariant violated for "${change.filepath}" at ${commitOid} ` +
+            `(have ${beforeOwners?.length ?? 'none'} owners, expected ${beforeLines.length})`
+        )
+      }
+      state.set(
+        change.filepath,
+        applyChangeToOwners(beforeOwners, linesToText(beforeLines), linesToText(afterLines), commitOid)
+      )
+    })
+
+    onProgress?.(i + 1, chain.length)
+  }
+
+  return state
 }
