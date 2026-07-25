@@ -36,13 +36,10 @@ describe('aggregateOwnership', () => {
     expect(bob?.percentage).toBeCloseTo(25)
   })
 
-  it('reports progress across files', async () => {
-    const { fs, dir, headOid } = await buildFixtureRepo('aggregate-ownership-test-2', [
-      {
-        message: 'first',
-        author: { name: 'Alice', email: 'alice@example.com' },
-        files: { 'a.txt': 'x\n', 'b.txt': 'y\n' },
-      },
+  it('reports progress across commits', async () => {
+    const { fs, dir, headOid } = await buildFixtureRepo('aggregate-ownership-progress', [
+      { message: 'c1', author: { name: 'Alice', email: 'alice@example.com' }, files: { 'a.txt': 'x\n' } },
+      { message: 'c2', author: { name: 'Alice', email: 'alice@example.com' }, files: { 'b.txt': 'y\n' } },
     ])
     const ctx = makeRepoContext(fs, dir)
 
