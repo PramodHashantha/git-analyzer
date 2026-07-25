@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { RepoPicker } from './components/RepoPicker'
 import { StatusPanel } from './components/StatusPanel'
+import { StaleBranchBanner } from './components/StaleBranchBanner'
 import { OverviewTable } from './components/Dashboard/OverviewTable'
 import { ActivityOverTimeChart } from './components/Dashboard/ActivityOverTimeChart'
 import { CommitPatternsHeatmap } from './components/Dashboard/CommitPatternsHeatmap'
@@ -62,6 +63,7 @@ export default function App() {
 
       {repoPath && analysis && filtered && (
         <div className="mt-6 space-y-6">
+          <StaleBranchBanner branch={analysis.branch} status={analysis.branchStatus} />
           <div className="flex flex-wrap items-center gap-4 rounded bg-white p-4 shadow">
             <BranchSelector
               branches={analysis.branches}
