@@ -61,6 +61,10 @@ export function useRepoAnalysis() {
         setStatus({ phase: 'computing-churn', done, total })
       )
 
+      // Show the ownership phase before aggregateOwnership's initial file
+      // enumeration (which reads every blob) so the panel doesn't linger on the
+      // previous churn label during that pre-pass.
+      setStatus({ phase: 'computing-ownership', done: 0, total: 0 })
       const { files: fileOwnership, authors: authorOwnership } = await aggregateOwnership(
         ctx,
         headOid,
