@@ -91,13 +91,18 @@ export async function computeAllOwnership(
         state.set(change.filepath, afterLines.map(() => commitOid))
         return
       }
+      const beforeOwners = state.get(change.filepath)
+      if (!beforeOwners) {
+        // Parent version was untracked (binary); it's now text — treat as a fresh add.
+        state.set(change.filepath, afterLines.map(() => commitOid))
+        return
+      }
       const beforeBlob = await readBlob(ctx, change.beforeOid)
       const beforeLines = decodeLines(beforeBlob)
-      const beforeOwners = state.get(change.filepath)
-      if (!beforeOwners || beforeOwners.length !== beforeLines.length) {
+      if (beforeOwners.length !== beforeLines.length) {
         throw new Error(
           `ownership-walk: state invariant violated for "${change.filepath}" at ${commitOid} ` +
-            `(have ${beforeOwners?.length ?? 'none'} owners, expected ${beforeLines.length})`
+            `(have ${beforeOwners.length} owners, expected ${beforeLines.length})`
         )
       }
       state.set(
