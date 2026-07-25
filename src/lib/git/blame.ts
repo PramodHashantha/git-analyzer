@@ -82,25 +82,3 @@ export async function blameFile(
 
   return owners as string[]
 }
-
-export async function computeFileOwnership(
-  ctx: RepoContext,
-  headOid: string,
-  filepath: string,
-  authorNameCache: Map<string, string>
-): Promise<Record<string, number>> {
-  const owners = await blameFile(ctx, headOid, filepath)
-  const counts: Record<string, number> = {}
-
-  for (const oid of owners) {
-    let author = authorNameCache.get(oid)
-    if (!author) {
-      const commit = await git.readCommit({ fs: ctx.fs, dir: ctx.dir, gitdir: ctx.gitdir, oid, cache: ctx.cache })
-      author = commit.commit.author.name
-      authorNameCache.set(oid, author)
-    }
-    counts[author] = (counts[author] ?? 0) + 1
-  }
-
-  return counts
-}
