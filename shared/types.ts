@@ -83,6 +83,11 @@ export interface BusFactorEntry {
   topAuthorPercentage: number
 }
 
+export interface SkippedFile {
+  filepath: string
+  reason: 'binary' | 'submodule'
+}
+
 export interface RepoAnalysis {
   repoName: string
   branch: string
@@ -96,5 +101,6 @@ export interface RepoAnalysis {
   commitPatterns: CommitPatternSummary[]
   fileOwnership: FileOwnership[]
   authorOwnership: AuthorOwnership[]
+  skippedFiles: SkippedFile[]
   mergeInsights: BranchMergeInsights[]
 }

@@ -1,14 +1,30 @@
 import { runGit, runGitBuffer } from './exec'
 import { isBinaryBlob } from '../../../shared/binary'
-import type { FileOwnership, AuthorOwnership } from '../../../shared/types'
+import type { FileOwnership, AuthorOwnership, SkippedFile } from '../../../shared/types'
 
-async function listFilesAtCommit(repoPath: string, headOid: string): Promise<string[]> {
-  const out = await runGit(repoPath, ['ls-tree', '-r', '--name-only', headOid])
+interface TreeEntry {
+  filepath: string
+  isSubmodule: boolean
+}
+
+/**
+ * `git ls-tree -r` (full form, not --name-only) so each line carries
+ * `<mode> <type> <oid>\t<path>` — a submodule (gitlink) entry has type
+ * `commit`, letting us skip it before ever attempting `git show` on it
+ * (which fails: there is no blob object for a gitlink entry).
+ */
+async function listFilesAtCommit(repoPath: string, headOid: string): Promise<TreeEntry[]> {
+  const out = await runGit(repoPath, ['ls-tree', '-r', headOid])
   return out
     .split('\n')
     .map((l) => l.trim())
     .filter(Boolean)
-    .sort()
+    .map((line) => {
+      const [meta, filepath] = line.split('\t')
+      const type = meta.split(' ')[1]
+      return { filepath, isSubmodule: type === 'commit' }
+    })
+    .sort((a, b) => a.filepath.localeCompare(b.filepath))
 }
 
 /**
@@ -33,18 +49,28 @@ export async function aggregateOwnership(
   repoPath: string,
   headOid: string,
   onProgress?: (done: number, total: number) => void
-): Promise<{ files: FileOwnership[]; authors: AuthorOwnership[] }> {
-  const filepaths = await listFilesAtCommit(repoPath, headOid)
+): Promise<{ files: FileOwnership[]; authors: AuthorOwnership[]; skipped: SkippedFile[] }> {
+  const entries = await listFilesAtCommit(repoPath, headOid)
 
   const files: FileOwnership[] = []
+  const skipped: SkippedFile[] = []
   const authorLineTotals = new Map<string, number>()
   let grandTotal = 0
 
-  for (let i = 0; i < filepaths.length; i++) {
-    const filepath = filepaths[i]
+  for (let i = 0; i < entries.length; i++) {
+    const { filepath, isSubmodule } = entries[i]
+
+    if (isSubmodule) {
+      skipped.push({ filepath, reason: 'submodule' })
+      onProgress?.(i + 1, entries.length)
+      continue
+    }
+
     const content = await runGitBuffer(repoPath, ['show', `${headOid}:${filepath}`])
 
-    if (!isBinaryBlob(content)) {
+    if (isBinaryBlob(content)) {
+      skipped.push({ filepath, reason: 'binary' })
+    } else {
       const ownerLineCounts = await blameFileCounts(repoPath, headOid, filepath)
       const totalLines = Object.values(ownerLineCounts).reduce((a, b) => a + b, 0)
       files.push({ filepath, totalLines, ownerLineCounts })
@@ -55,7 +81,7 @@ export async function aggregateOwnership(
       }
     }
 
-    onProgress?.(i + 1, filepaths.length)
+    onProgress?.(i + 1, entries.length)
   }
 
   const authors: AuthorOwnership[] = [...authorLineTotals.entries()]
@@ -66,5 +92,5 @@ export async function aggregateOwnership(
     }))
     .sort((a, b) => b.linesOwned - a.linesOwned)
 
-  return { files, authors }
+  return { files, authors, skipped }
 }

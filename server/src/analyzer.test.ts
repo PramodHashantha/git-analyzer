@@ -29,6 +29,7 @@ describe('analyzer', () => {
     expect(analysis.authorTotals.find((a) => a.author === 'Bob')?.added).toBe(1)
     expect(analysis.authorOwnership.find((a) => a.author === 'Bob')?.linesOwned).toBe(1)
     expect(analysis.fileOwnership.find((f) => f.filepath === 'a.txt')?.totalLines).toBe(2)
+    expect(analysis.skippedFiles).toEqual([])
     expect(analysis.mergeInsights).toEqual([])
   })
 

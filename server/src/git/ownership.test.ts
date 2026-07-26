@@ -32,7 +32,7 @@ describe('aggregateOwnership', () => {
     expect(authors.find((a) => a.author === 'Lahiru')?.linesOwned).toBe(2)
   })
 
-  it('excludes binary files from ownership', async () => {
+  it('excludes binary files from ownership and reports them as skipped', async () => {
     const dir = buildRealGitRepo((run, d) => {
       fs.writeFileSync(`${d}/code.txt`, 'a\nb\n')
       fs.writeFileSync(`${d}/image.bin`, Buffer.from([0x89, 0x50, 0x00, 0x47]))
@@ -40,10 +40,42 @@ describe('aggregateOwnership', () => {
       run(['-c', 'user.name=Alice', '-c', 'user.email=alice@example.com', 'commit', '-q', '-m', 'mixed'])
     })
 
-    const { files } = await aggregateOwnership(dir, headOidOf(dir))
+    const { files, skipped } = await aggregateOwnership(dir, headOidOf(dir))
 
     expect(files.some((f) => f.filepath === 'code.txt')).toBe(true)
     expect(files.some((f) => f.filepath === 'image.bin')).toBe(false)
+    expect(skipped).toContainEqual({ filepath: 'image.bin', reason: 'binary' })
+  })
+
+  it('detects a submodule without crashing and reports it as skipped', async () => {
+    const innerDir = buildRealGitRepo((run, d) => {
+      fs.writeFileSync(`${d}/inner.txt`, 'inner\n')
+      run(['add', '-A'])
+      run(['-c', 'user.name=Alice', '-c', 'user.email=alice@example.com', 'commit', '-q', '-m', 'inner commit'])
+    })
+
+    const dir = buildRealGitRepo((run, d) => {
+      fs.writeFileSync(`${d}/code.txt`, 'a\nb\n')
+      run(['add', '-A'])
+      run(['-c', 'user.name=Alice', '-c', 'user.email=alice@example.com', 'commit', '-q', '-m', 'add code'])
+    })
+
+    execFileSync(
+      'git',
+      ['-c', 'protocol.file.allow=always', 'submodule', 'add', '-q', innerDir, 'sub'],
+      { cwd: dir }
+    )
+    execFileSync(
+      'git',
+      ['-c', 'user.name=Alice', '-c', 'user.email=alice@example.com', 'commit', '-q', '-m', 'add submodule'],
+      { cwd: dir }
+    )
+
+    const { files, skipped } = await aggregateOwnership(dir, headOidOf(dir))
+
+    expect(files.some((f) => f.filepath === 'code.txt')).toBe(true)
+    expect(files.some((f) => f.filepath === 'sub')).toBe(false)
+    expect(skipped).toContainEqual({ filepath: 'sub', reason: 'submodule' })
   })
 
   it('computes percentages that sum to 100', async () => {

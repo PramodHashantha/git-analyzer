@@ -50,7 +50,7 @@ export async function computeAnalysis(
     }
   })
 
-  const { files: fileOwnership, authors: authorOwnership } = await aggregateOwnership(
+  const { files: fileOwnership, authors: authorOwnership, skipped: skippedFiles } = await aggregateOwnership(
     repoPath,
     headOid,
     onOwnershipProgress
@@ -71,6 +71,7 @@ export async function computeAnalysis(
     commitPatterns: aggregateCommitPatterns(commitStats),
     fileOwnership,
     authorOwnership,
+    skippedFiles,
     mergeInsights: aggregateMergeInsights(commits),
   }
 }
