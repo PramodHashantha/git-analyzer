@@ -16,6 +16,7 @@ const makeAnalysis = (): RepoAnalysis => ({
   commitPatterns: [],
   fileOwnership: [],
   authorOwnership: [],
+  skippedFiles: [],
   mergeInsights: [],
 })
 

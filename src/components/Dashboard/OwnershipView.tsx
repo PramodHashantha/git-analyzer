@@ -1,21 +1,45 @@
 import { useState } from 'react'
-import type { AuthorOwnership, FileOwnership } from '../../../shared/types'
+import type { AuthorOwnership, FileOwnership, SkippedFile } from '../../../shared/types'
 import { rollupByDirectory } from '../../lib/directory-rollup'
 
 export function OwnershipView({
   authorOwnership,
   fileOwnership,
+  skippedFiles,
 }: {
   authorOwnership: AuthorOwnership[]
   fileOwnership: FileOwnership[]
+  skippedFiles: SkippedFile[]
 }) {
   const [selectedFile, setSelectedFile] = useState<string | null>(null)
+  const [skippedExpanded, setSkippedExpanded] = useState(false)
   const selected = fileOwnership.find((f) => f.filepath === selectedFile) ?? null
   const directories = rollupByDirectory(fileOwnership)
+
+  const binaryCount = skippedFiles.filter((f) => f.reason === 'binary').length
+  const submoduleCount = skippedFiles.filter((f) => f.reason === 'submodule').length
 
   return (
     <section className="rounded bg-white p-4 shadow">
       <h2 className="mb-4 text-lg font-semibold">Current line ownership (HEAD)</h2>
+
+      {skippedFiles.length > 0 && (
+        <div className="mb-4 text-sm text-gray-600">
+          <button type="button" onClick={() => setSkippedExpanded((v) => !v)} className="underline">
+            {skippedFiles.length} file{skippedFiles.length === 1 ? '' : 's'} excluded from ownership (
+            {binaryCount} binary, {submoduleCount} submodule{submoduleCount === 1 ? '' : 's'})
+          </button>
+          {skippedExpanded && (
+            <ul className="mt-2 list-disc pl-5">
+              {skippedFiles.map((f) => (
+                <li key={f.filepath}>
+                  {f.filepath} ({f.reason})
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       <table className="mb-6 w-full text-left text-sm">
         <thead>

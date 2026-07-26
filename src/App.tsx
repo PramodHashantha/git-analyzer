@@ -101,6 +101,7 @@ export default function App() {
           <OwnershipView
             authorOwnership={analysis.authorOwnership}
             fileOwnership={analysis.fileOwnership}
+            skippedFiles={analysis.skippedFiles}
           />
         </div>
       )}
