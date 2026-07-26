@@ -1,5 +1,4 @@
 import '@testing-library/jest-dom'
-import 'fake-indexeddb/auto'
 
 // Polyfill ResizeObserver for Recharts testing
 declare global {

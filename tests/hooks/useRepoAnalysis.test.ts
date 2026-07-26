@@ -1,65 +1,76 @@
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, waitFor, act } from '@testing-library/react'
-import { buildFixtureRepo } from '../fixtures/gitFixture'
+import { useRepoAnalysis } from '../../src/hooks/useRepoAnalysis'
+import type { RepoAnalysis } from '../../shared/types'
 
-vi.mock('../../src/lib/fs-adapter', async () => {
-  const actual = await vi.importActual<typeof import('../../src/lib/fs-adapter')>(
-    '../../src/lib/fs-adapter'
-  )
-  return {
-    ...actual,
-    createFsAdapter: vi.fn(),
-  }
+const makeAnalysis = (): RepoAnalysis => ({
+  repoName: 'demo',
+  branch: 'main',
+  branches: ['main'],
+  branchStatus: { hasUpstream: false, ahead: 0, behind: 0 },
+  headOid: 'abc123',
+  commits: [],
+  commitStats: [],
+  authorTotals: [],
+  activity: [],
+  commitPatterns: [],
+  fileOwnership: [],
+  authorOwnership: [],
+  skippedFiles: [],
+  mergeInsights: [],
 })
 
-import { createFsAdapter } from '../../src/lib/fs-adapter'
-import { useRepoAnalysis } from '../../src/hooks/useRepoAnalysis'
-
 describe('useRepoAnalysis', () => {
-  it('walks the analysis pipeline and lands on a done state', async () => {
-    const { fs } = await buildFixtureRepo(
-      'use-repo-analysis-test-1',
-      [
-        {
-          message: 'first',
-          author: { name: 'Alice', email: 'alice@example.com' },
-          files: { 'a.txt': 'one\n' },
-        },
-      ],
-      '/'
-    )
-
-    vi.mocked(createFsAdapter).mockReturnValue(fs as unknown as ReturnType<typeof createFsAdapter>)
-
-    const { result } = renderHook(() => useRepoAnalysis())
-    const fakeRoot = { name: 'demo-repo' } as unknown as FileSystemDirectoryHandle
-
-    await act(async () => {
-      await result.current.analyze(fakeRoot)
-    })
-
-    await waitFor(() => expect(result.current.status.phase).toBe('done'))
-
-    if (result.current.status.phase !== 'done') throw new Error('expected done phase')
-    expect(result.current.status.analysis.branch).toBe('main')
-    expect(result.current.status.analysis.commits).toHaveLength(1)
-    expect(result.current.status.analysis.authorTotals[0].author).toBe('Alice')
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn())
+  })
+  afterEach(() => {
+    vi.unstubAllGlobals()
   })
 
-  it('reports an error state when the folder has no .git directory', async () => {
-    const LightningFS = (await import('@isomorphic-git/lightning-fs')).default
-    const plainFs = new LightningFS('use-repo-analysis-test-2')
-    await plainFs.promises.mkdir('/plain')
-
-    vi.mocked(createFsAdapter).mockReturnValue(plainFs as unknown as ReturnType<typeof createFsAdapter>)
+  it('fetches /api/analyze and lands on a done state', async () => {
+    const analysis = makeAnalysis()
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      json: async () => analysis,
+    } as Response)
 
     const { result } = renderHook(() => useRepoAnalysis())
-    const fakeRoot = { name: 'plain' } as unknown as FileSystemDirectoryHandle
-
     await act(async () => {
-      await result.current.analyze(fakeRoot)
+      await result.current.analyze('D:\\repo')
+    })
+
+    expect(fetch).toHaveBeenCalledWith(expect.stringContaining('/api/analyze?path=D%3A%5Crepo'))
+    await waitFor(() => expect(result.current.status.phase).toBe('done'))
+    if (result.current.status.phase !== 'done') throw new Error('expected done')
+    expect(result.current.status.analysis.branch).toBe('main')
+  })
+
+  it('includes the branch override in the request', async () => {
+    vi.mocked(fetch).mockResolvedValue({ ok: true, json: async () => makeAnalysis() } as Response)
+
+    const { result } = renderHook(() => useRepoAnalysis())
+    await act(async () => {
+      await result.current.analyze('D:\\repo', 'dev')
+    })
+
+    expect(fetch).toHaveBeenCalledWith(expect.stringContaining('branch=dev'))
+  })
+
+  it('surfaces a server error message', async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: false,
+      status: 400,
+      json: async () => ({ error: 'Not a git repository: D:\\repo' }),
+    } as Response)
+
+    const { result } = renderHook(() => useRepoAnalysis())
+    await act(async () => {
+      await result.current.analyze('D:\\repo')
     })
 
     await waitFor(() => expect(result.current.status.phase).toBe('error'))
+    if (result.current.status.phase !== 'error') throw new Error('expected error')
+    expect(result.current.status.message).toMatch(/not a git repository/i)
   })
 })

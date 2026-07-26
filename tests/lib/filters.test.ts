@@ -6,7 +6,7 @@ import {
   filterCommitStatsByDateRange,
   filterCommitStatsByAuthors,
 } from '../../src/lib/filters'
-import type { ActivityBucket, CommitStats } from '../../src/lib/types'
+import type { ActivityBucket, CommitStats } from '../../shared/types'
 
 describe('filterByAuthors', () => {
   it('returns everything when no authors are selected', () => {

@@ -1,14 +1,14 @@
 # Git Contribution Dashboard
 
-A fully client-side dashboard that analyzes a local git repository's
-contribution history — added/deleted lines, activity over time, commit
-patterns, and current line ownership (blame-based) — with no backend.
+A fully local dashboard that analyzes a local git repository's contribution
+history — added/deleted lines, activity over time, commit patterns, and
+current line ownership (blame-based) — by shelling out to your real `git`
+binary. Nothing is uploaded anywhere.
 
 ## Requirements
 
-- **Chrome or Edge** (the File System Access API this app depends on has no
-  Firefox or Safari equivalent).
-- Node.js 18+ to build/run locally.
+- Node.js 18+
+- `git` available on your PATH
 
 ## Local development
 
@@ -17,9 +17,21 @@ npm install
 npm run dev
 ```
 
-Open the printed local URL, click **Select a git repo folder**, and choose
-any local git repository. All analysis (commit walking, line diffing,
-blame) runs in your browser — nothing is uploaded anywhere.
+This starts the Vite dev server (frontend) and the local Express backend
+together. Open the printed URL, paste the path to a local git repository you
+have a clone of (ownership doesn't matter — your local clone has the full
+history), and click Analyze.
+
+## Running it for real use
+
+```bash
+npm install
+npm run build
+npm start
+```
+
+`npm start` serves the built frontend and the API from one local process at
+`http://127.0.0.1:3001`.
 
 ## Testing
 
@@ -27,16 +39,22 @@ blame) runs in your browser — nothing is uploaded anywhere.
 npm test
 ```
 
-## Deploying to Vercel
+## Architecture
 
-This is a static Vite build with no server component. Push to a Git
-repository connected to Vercel, or run `vercel deploy` from this directory —
-`vercel.json` points Vercel at `npm run build` and the `dist/` output.
+This is a fully local tool: a small Express backend (`server/`) shells out to
+your real `git` binary to read repo history, diffs, and blame — no data ever
+leaves your machine, and there's no hosted/shared version. `shared/` holds
+the types and aggregation logic used by both the backend and the React
+dashboard (`src/`).
 
 ## Origin
 
 This project began as a PowerShell script
 (`docs/original-powershell-script.txt`) that used `git shortlog` and
 `git log --numstat` to tally per-author line changes. The design rationale
-for turning it into a hosted dashboard is in
-`docs/superpowers/specs/2026-07-24-git-contribution-dashboard-design.md`.
+for turning it into a dashboard is in
+`docs/superpowers/specs/2026-07-24-git-contribution-dashboard-design.md`;
+that first version ran entirely in the browser. It was later replaced with
+the current fully local, backend-driven architecture — no hosted/shared
+version — per
+`docs/superpowers/specs/2026-07-25-local-git-backend-design.md`.

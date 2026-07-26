@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { rollupByDirectory } from '../../src/lib/directory-rollup'
-import type { FileOwnership } from '../../src/lib/types'
+import type { FileOwnership } from '../../shared/types'
 
 describe('rollupByDirectory', () => {
   it('groups files by their top-level directory and sums line ownership', () => {

@@ -1,30 +1,37 @@
 import { useMemo, useState } from 'react'
-import { FolderPicker } from './components/FolderPicker'
-import { UnsupportedBrowserNotice } from './components/UnsupportedBrowserNotice'
+import { RepoPicker } from './components/RepoPicker'
 import { StatusPanel } from './components/StatusPanel'
+import { StaleBranchBanner } from './components/StaleBranchBanner'
 import { OverviewTable } from './components/Dashboard/OverviewTable'
 import { ActivityOverTimeChart } from './components/Dashboard/ActivityOverTimeChart'
 import { CommitPatternsHeatmap } from './components/Dashboard/CommitPatternsHeatmap'
 import { OwnershipView } from './components/Dashboard/OwnershipView'
 import { MergeInsightsTable } from './components/Dashboard/MergeInsightsTable'
+import { HotspotsTable } from './components/Dashboard/HotspotsTable'
+import { BusFactorTable } from './components/Dashboard/BusFactorTable'
 import { BranchSelector } from './components/BranchSelector'
 import { DateRangeFilter } from './components/DateRangeFilter'
 import { AuthorFilter } from './components/AuthorFilter'
-import { isFileSystemAccessSupported } from './lib/browser-support'
 import { useRepoAnalysis } from './hooks/useRepoAnalysis'
 import {
-  filterByAuthors,
-  filterActivityByDateRange,
   filterCommitStatsByDateRange,
   filterCommitStatsByAuthors,
   type DateRange,
 } from './lib/filters'
-import { aggregateAuthorTotals, aggregateCommitPatterns } from './lib/git/aggregate-churn'
+import {
+  aggregateAuthorTotals,
+  aggregateCommitPatterns,
+  aggregateActivityOverTime,
+  type BucketGranularity,
+} from '../shared/aggregate-churn'
+import { aggregateHotspots } from '../shared/aggregate-hotspots'
+import { aggregateBusFactor } from '../shared/aggregate-bus-factor'
 
 export default function App() {
-  const [root, setRoot] = useState<FileSystemDirectoryHandle | null>(null)
+  const [repoPath, setRepoPath] = useState<string | null>(null)
   const [dateRange, setDateRange] = useState<DateRange>({ start: null, end: null })
   const [selectedAuthors, setSelectedAuthors] = useState<string[]>([])
+  const [granularity, setGranularity] = useState<BucketGranularity>('month')
   const { status, analyze } = useRepoAnalysis()
 
   const analysis = status.phase === 'done' ? status.analysis : null
@@ -32,64 +39,42 @@ export default function App() {
   const filtered = useMemo(() => {
     if (!analysis) return null
     const dateFilteredStats = filterCommitStatsByDateRange(analysis.commitStats, dateRange)
-    const authorAndDateFilteredStats = filterCommitStatsByAuthors(
-      dateFilteredStats,
-      selectedAuthors
-    )
+    const authorAndDateFilteredStats = filterCommitStatsByAuthors(dateFilteredStats, selectedAuthors)
     return {
       authorTotals: aggregateAuthorTotals(authorAndDateFilteredStats),
-      activity: filterActivityByDateRange(
-        filterByAuthors(analysis.activity, selectedAuthors),
-        dateRange
-      ),
+      activity: aggregateActivityOverTime(authorAndDateFilteredStats, granularity),
       commitPatterns: aggregateCommitPatterns(authorAndDateFilteredStats),
+      hotspots: aggregateHotspots(authorAndDateFilteredStats),
     }
-  }, [analysis, selectedAuthors, dateRange])
+  }, [analysis, selectedAuthors, dateRange, granularity])
 
-  if (!isFileSystemAccessSupported()) {
-    return (
-      <main className="min-h-screen bg-gray-50 p-8">
-        <UnsupportedBrowserNotice />
-      </main>
-    )
-  }
+  const busFactor = useMemo(() => {
+    if (!analysis) return null
+    return aggregateBusFactor(analysis.fileOwnership)
+  }, [analysis])
 
-  const handleFolderSelected = async (handle: FileSystemDirectoryHandle) => {
-    setRoot(handle)
+  const handleRepoSelected = async (path: string) => {
+    setRepoPath(path)
     setSelectedAuthors([])
     setDateRange({ start: null, end: null })
-    await analyze(handle)
+    await analyze(path)
   }
 
   const handleBranchChange = async (branch: string) => {
-    if (root) await analyze(root, branch)
-  }
-
-  const handleGrantAccessAgain = async () => {
-    if (!root) return
-    await root.requestPermission({ mode: 'read' })
-    await analyze(root)
+    if (repoPath) await analyze(repoPath, branch)
   }
 
   return (
     <main className="min-h-screen bg-gray-50 p-8">
       <h1 className="mb-6 text-2xl font-bold">Git Contribution Dashboard</h1>
-      {!root && <FolderPicker onFolderSelected={handleFolderSelected} />}
 
-      {root && !analysis && <StatusPanel status={status} />}
+      <RepoPicker onSelect={handleRepoSelected} />
 
-      {root && status.phase === 'error' && status.permissionDenied && (
-        <button
-          type="button"
-          onClick={handleGrantAccessAgain}
-          className="mt-2 rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
-        >
-          Grant access again
-        </button>
-      )}
+      {repoPath && !analysis && <StatusPanel status={status} />}
 
-      {root && analysis && filtered && (
-        <div className="space-y-6">
+      {repoPath && analysis && filtered && busFactor && (
+        <div className="mt-6 space-y-6">
+          <StaleBranchBanner branch={analysis.branch} status={analysis.branchStatus} />
           <div className="flex flex-wrap items-center gap-4 rounded bg-white p-4 shadow">
             <BranchSelector
               branches={analysis.branches}
@@ -104,12 +89,19 @@ export default function App() {
             onChange={setSelectedAuthors}
           />
           <OverviewTable authorTotals={filtered.authorTotals} />
-          <ActivityOverTimeChart activity={filtered.activity} />
+          <ActivityOverTimeChart
+            activity={filtered.activity}
+            granularity={granularity}
+            onGranularityChange={setGranularity}
+          />
           <CommitPatternsHeatmap patterns={filtered.commitPatterns} />
           <MergeInsightsTable mergeInsights={analysis.mergeInsights} />
+          <HotspotsTable hotspots={filtered.hotspots} />
+          <BusFactorTable busFactor={busFactor} />
           <OwnershipView
             authorOwnership={analysis.authorOwnership}
             fileOwnership={analysis.fileOwnership}
+            skippedFiles={analysis.skippedFiles}
           />
         </div>
       )}

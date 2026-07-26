@@ -1,5 +1,5 @@
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
-import type { AuthorTotals } from '../../lib/types'
+import type { AuthorTotals } from '../../../shared/types'
 
 export function OverviewTable({ authorTotals }: { authorTotals: AuthorTotals[] }) {
   return (

@@ -1,4 +1,4 @@
-import type { FileOwnership } from './types'
+import type { FileOwnership } from '../../shared/types'
 
 export function rollupByDirectory(files: FileOwnership[]): FileOwnership[] {
   const byDir = new Map<string, FileOwnership>()
